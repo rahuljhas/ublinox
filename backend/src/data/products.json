@@ -1,0 +1,8 @@
+[
+  { "id": "p-notebook", "name": "Dotted Notebook A5", "priceCents": 1299, "inventory": 50 },
+  { "id": "p-pens", "name": "Gel Pen Set (6)", "priceCents": 899, "inventory": 100 },
+  { "id": "p-mug", "name": "Ceramic Mug", "priceCents": 1450, "inventory": 30 },
+  { "id": "p-tote", "name": "Canvas Tote Bag", "priceCents": 2199, "inventory": 20 },
+  { "id": "p-lamp", "name": "Desk Lamp", "priceCents": 4999, "inventory": 10 },
+  { "id": "p-print", "name": "Limited Edition Art Print", "priceCents": 7500, "inventory": 3 }
+]
