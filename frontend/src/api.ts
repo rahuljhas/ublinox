@@ -3,6 +3,7 @@ export interface Product {
   name: string;
   priceCents: number;
   inventory: number;
+  imageUrl?: string;
 }
 
 export interface CartView {

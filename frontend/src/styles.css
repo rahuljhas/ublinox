@@ -1,4 +1,4 @@
-/* Palette: white dominates, charcoal/black for structure and primary actions, pink only as accent. */
+/* Palette: white dominates, charcoal/black for structure and primary actions, brand gradient only as accent. */
 :root {
   --white: #ffffff;
   --paper: #fafafa;
@@ -12,11 +12,15 @@
   --ink: #111114;
   --muted: #6b6b73;
 
-  --pink-50: #fff6f9;
-  --pink-100: #ffe8f0;
-  --pink-300: #ff9ec0;
-  --pink-500: #ec4d87;
-  --pink-600: #d63a74;
+  /* Brand colours sampled from the company logo: indigo -> blue -> teal. */
+  --brand-50: #f3f6ff;
+  --brand-100: #e4ecfd;
+  --brand-300: #9db3f5;
+  --brand-500: #5a5fe5;
+  --brand-600: #4b50d1;
+  --brand-blue: #4f92db;
+  --brand-teal: #49c2d2;
+  --brand-gradient: linear-gradient(135deg, #5a5fe5 0%, #4f92db 55%, #49c2d2 100%);
 
   --ok: #15803d;
   --warn: #b45309;
@@ -38,8 +42,8 @@ p { margin: 0; line-height: 1.55; }
 code, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 0.85em; }
 .muted { color: var(--muted); }
 small { font-size: 0.8rem; }
-.accent-text { color: var(--pink-600); }
-.eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pink-600); }
+.accent-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-600); }
 
 /* ---------- top navigation ---------- */
 .topbar {
@@ -51,18 +55,20 @@ small { font-size: 0.8rem; }
 .brand-button { border: 0; background: none; padding: 0; cursor: pointer; }
 .logo-lockup { display: inline-flex; align-items: center; gap: 10px; }
 .wordmark { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; color: var(--black); }
-.wordmark-dot { color: var(--pink-500); }
+.wordmark-dot { color: var(--brand-teal); }
+.logo-img { display: block; height: 34px; width: auto; }
 .nav-links { display: flex; gap: 4px; margin-left: auto; }
 .nav-links button { border: 0; background: none; font: inherit; font-weight: 600; color: var(--muted); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
 .nav-links button:hover { color: var(--ink); background: var(--mist); }
 .nav-links button.active { color: var(--black); background: var(--mist); }
 .cart-chip { border: 0; font: inherit; font-weight: 700; cursor: pointer; background: var(--black); color: var(--white); padding: 9px 14px 9px 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; }
-.cart-chip .badge { background: var(--pink-500); color: var(--white); font-size: 0.75rem; min-width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; padding: 0 6px; }
+.cart-chip .badge { background: var(--brand-gradient); color: var(--white); font-size: 0.75rem; min-width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; padding: 0 6px; }
 
-/* ---------- hero: white with a faint pink glow in one corner ---------- */
+/* ---------- hero: white with a faint brand glow in one corner ---------- */
 .hero {
   background:
-    radial-gradient(60% 80% at 100% 0%, var(--pink-100) 0%, rgba(255, 232, 240, 0) 60%),
+    radial-gradient(60% 80% at 100% 0%, rgba(73, 194, 210, 0.16) 0%, rgba(73, 194, 210, 0) 60%),
+    radial-gradient(50% 70% at 80% 10%, rgba(90, 95, 229, 0.10) 0%, rgba(90, 95, 229, 0) 60%),
     linear-gradient(180deg, var(--white) 0%, var(--paper) 100%);
   border-bottom: 1px solid var(--line);
   padding: 56px 16px 64px;
@@ -76,12 +82,12 @@ small { font-size: 0.8rem; }
 /* rewards card: the one dark surface above the fold */
 .card.reward-card { background: var(--charcoal); border-color: var(--charcoal); color: var(--white); padding: 26px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 30px 60px -30px rgba(11, 11, 13, 0.6); }
 .reward-card h3 { color: var(--white); font-size: 1.35rem; line-height: 1.25; }
-.reward-card .accent-text { color: var(--pink-300); }
-.reward-card .eyebrow { color: var(--pink-300); }
+.reward-card .accent-text { background: linear-gradient(90deg, #9db3f5, #7fdbe5); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.reward-card .eyebrow { color: #7fdbe5; }
 .reward-card .muted { color: #a1a1aa; }
 .progress { display: flex; gap: 6px; }
 .progress span { flex: 1; height: 8px; border-radius: 999px; background: var(--graphite); }
-.progress span.filled { background: linear-gradient(90deg, var(--pink-300), var(--pink-500)); }
+.progress span.filled { background: var(--brand-gradient); }
 .reward-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 0; padding-top: 14px; border-top: 1px solid var(--graphite); }
 .reward-stats dt { font-size: 0.75rem; color: #a1a1aa; }
 .reward-stats dd { margin: 2px 0 0; font-size: 1.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -106,14 +112,17 @@ small { font-size: 0.8rem; }
 /* ---------- products ---------- */
 .product { overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
 .product:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--line-strong); }
-.art { height: 130px; display: grid; place-items: center; border-bottom: 1px solid var(--line); }
+.art { position: relative; aspect-ratio: 4 / 3; max-width: 100%; display: grid; place-items: center; border-bottom: 1px solid var(--line); background: var(--paper); overflow: hidden; }
+.art img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
+.product:hover .art img { transform: scale(1.04); }
+.sold-out-veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, 0.72); font-weight: 800; color: var(--charcoal); letter-spacing: 0.04em; }
 .art span { font-size: 2.1rem; font-weight: 800; color: var(--charcoal); letter-spacing: 0.02em; }
 .product-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .product-body h3 { font-size: 1rem; }
 .price { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 
 .pill { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--mist); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
-.pill.low { background: var(--pink-50); color: var(--pink-600); border-color: var(--pink-100); }
+.pill.low { background: var(--brand-50); color: var(--brand-600); border-color: var(--brand-100); }
 .pill.out { background: #fff1f2; color: var(--error); border-color: #ffe4e6; }
 .pill.ok { background: #f0fdf4; color: var(--ok); border-color: #dcfce7; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -121,7 +130,7 @@ small { font-size: 0.8rem; }
 /* ---------- buttons & inputs ---------- */
 .btn { font: inherit; font-weight: 700; border-radius: 12px; padding: 11px 18px; cursor: pointer; border: 1px solid transparent; transition: background 0.15s ease, transform 0.05s ease; }
 .btn:active { transform: translateY(1px); }
-.btn:focus-visible, .nav-links button:focus-visible, .cart-chip:focus-visible, .qty button:focus-visible, input:focus-visible { outline: 3px solid var(--pink-300); outline-offset: 2px; }
+.btn:focus-visible, .nav-links button:focus-visible, .cart-chip:focus-visible, .qty button:focus-visible, input:focus-visible { outline: 3px solid var(--brand-300); outline-offset: 2px; }
 .btn.primary { background: var(--black); color: var(--white); }
 .btn.primary:hover { background: var(--graphite); }
 .btn.ghost { background: var(--white); color: var(--ink); border-color: var(--line-strong); }

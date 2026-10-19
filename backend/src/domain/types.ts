@@ -3,6 +3,8 @@ export interface Product {
   name: string;
   priceCents: number;
   inventory: number;
+  /** Path of the product picture, served by the frontend. */
+  imageUrl?: string;
 }
 
 export type CartStatus = "OPEN" | "CHECKED_OUT";
