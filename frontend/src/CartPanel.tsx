@@ -64,7 +64,7 @@ export function CartPanel(props: {
     return (
       <aside className="card panel receipt">
         <div className="section-head">
-          <h2>Order placed</h2>
+          <h3 className="panel-title">Order placed</h3>
           <span className="pill ok">Paid</span>
         </div>
         <p className="muted mono">#{order.id}</p>
@@ -112,12 +112,27 @@ export function CartPanel(props: {
   return (
     <aside className="card panel">
       <div className="section-head">
-        <h2>Your cart</h2>
+        <h3 className="panel-title">Your cart</h3>
         <span className="muted">{cart?.itemCount ?? 0} items</span>
       </div>
 
       {!cart || cart.items.length === 0 ? (
-        <p className="empty">Your cart is empty. Add something you like.</p>
+        <div className="empty-state">
+          <span className="empty-icon" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z" />
+              <path d="M9 10V7a3 3 0 0 1 6 0v3" />
+            </svg>
+          </span>
+          <strong>Your cart is empty</strong>
+          <p className="muted">Pick something from the collection and it will show up here.</p>
+          <button
+            className="btn ghost small"
+            onClick={() => document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            Browse products
+          </button>
+        </div>
       ) : (
         <ul className="lines">
           {cart.items.map((item) => (

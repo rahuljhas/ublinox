@@ -137,11 +137,17 @@ small { font-size: 0.8rem; }
 .btn.ghost:hover { background: var(--mist); }
 .btn.small { padding: 7px 12px; font-size: 0.85rem; }
 .btn.wide { width: 100%; padding: 13px; font-size: 1rem; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary:disabled { background: var(--mist); color: var(--muted); opacity: 1; border-color: var(--line); }
 input { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--white); color: var(--ink); width: 100%; }
 
 /* ---------- cart ---------- */
-.empty { color: var(--muted); background: var(--paper); border: 1px dashed var(--line-strong); border-radius: 12px; padding: 18px; text-align: center; margin: 0; }
+.panel-title { font-size: 1.25rem; font-weight: 800; }
+.empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 26px 18px; border-radius: 14px; background: linear-gradient(180deg, var(--brand-50), var(--white)); border: 1px solid var(--line); }
+.empty-state strong { font-size: 1rem; }
+.empty-state p { font-size: 0.88rem; max-width: 30ch; }
+.empty-state .btn { margin-top: 6px; }
+.empty-icon { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: var(--white); background: var(--brand-gradient); box-shadow: 0 10px 24px -12px rgba(79, 146, 219, 0.7); margin-bottom: 4px; }
 .lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .lines li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .line-total { min-width: 70px; text-align: right; font-weight: 700; }
