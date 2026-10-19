@@ -88,8 +88,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Local dev: "/api" (Vite proxies it to localhost:3000). Production: the deployed API, e.g. https://ublinox-api.onrender.com */
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "/api";
+
 async function call<T>(method: string, path: string, body?: unknown, headers: Record<string, string> = {}) {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: { "Content-Type": "application/json", ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),

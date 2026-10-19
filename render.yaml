@@ -1,0 +1,20 @@
+# Render Blueprint for the API. Exactly one instance: state lives in process memory,
+# so a second instance would hold its own stock and coupons (see DECISIONS.md).
+services:
+  - type: web
+    name: ublinox-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: npm install --include=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: COUPON_EVERY_N_ORDERS
+        value: "5"
+      - key: COUPON_PERCENT_OFF
+        value: "10"
