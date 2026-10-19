@@ -299,7 +299,7 @@ Checkout returns the first failing check, in a fixed order, and writes nothing. 
 | Payment | Async fake with declines and a charge log | Real provider, timeouts, webhooks, reconciliation |
 | Admin | Report, coupons, order history, catalog edits | Authentication and authorisation |
 | Storage | In-memory, one instance | Database, persistence across restarts, idempotency key expiry |
-| Frontend | Small React UI demonstrating retries, coupons, races and history | Not a focus, per the brief |
+| Frontend | Small React UI: shop, cart, coupon checkout, order history, admin report; single-click checkout that retries network failures with the same key | Not a focus, per the brief |
 
 ## 8. Multiple instances and production scale
 

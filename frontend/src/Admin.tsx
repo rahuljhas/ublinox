@@ -7,7 +7,6 @@ export function Admin(props: { products: Product[]; notify: Notify; onProductsCh
   const [report, setReport] = useState<Report | null>(null);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [latest, setLatest] = useState<Coupon | null>(null);
-  const [race, setRace] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [r, c] = await Promise.all([api.admin.report(), api.admin.coupons()]);
@@ -42,26 +41,6 @@ export function Admin(props: { products: Product[]; notify: Notify; onProductsCh
     } catch (e) {
       fail(e);
     }
-  }
-
-  /** Fires N checkouts at once for a scarce product to show the server never oversells. */
-  async function raceForLastUnits() {
-    const target = props.products.find((p) => p.id === "p-print") ?? props.products[0];
-    if (!target) return;
-    const contenders = 6;
-    setRace(`Creating ${contenders} carts…`);
-    const carts = await Promise.all(Array.from({ length: contenders }, () => api.createCart()));
-    await Promise.all(carts.map((c) => api.setQuantity(c.id, target.id, 1).catch(() => null)));
-    const results = await Promise.allSettled(carts.map((c) => api.checkout(c.id, crypto.randomUUID())));
-    const won = results.filter((r) => r.status === "fulfilled").length;
-    const codes = results
-      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-      .map((r) => (r.reason instanceof ApiError ? r.reason.code : "ERROR"));
-    setRace(
-      `${contenders} simultaneous checkouts for "${target.name}" (stock ${target.inventory}): ` +
-        `${won} succeeded, ${codes.length} rejected${codes.length ? ` (${[...new Set(codes)].join(", ")})` : ""}.`,
-    );
-    await Promise.all([props.onProductsChanged(), refresh()]);
   }
 
   return (
@@ -170,7 +149,7 @@ export function Admin(props: { products: Product[]; notify: Notify; onProductsCh
           </table>
         </section>
 
-        <section className="card panel">
+        <section className="card panel span-2">
           <h3>Catalog</h3>
           <p className="muted small-print">Change a price or stock level, then look at an open cart: it shows the new price.</p>
           <table>
@@ -209,16 +188,6 @@ export function Admin(props: { products: Product[]; notify: Notify; onProductsCh
           <AdminOrderHistory refreshKey={coupons.length + (report?.ordersPlaced ?? 0)} />
         </div>
 
-        <section className="card panel">
-          <h3>Concurrency demo</h3>
-          <p className="muted small-print">
-            Sends 6 checkouts at the same moment for the limited print. Only as many as are in stock can succeed.
-          </p>
-          <button className="btn primary" onClick={raceForLastUnits}>
-            Race for the last units
-          </button>
-          {race && <div className="banner ok">{race}</div>}
-        </section>
       </div>
     </div>
   );

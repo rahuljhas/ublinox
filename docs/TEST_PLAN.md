@@ -227,11 +227,11 @@ E1–E10 are described case by case in `docs/EDGE_CASES.md`: consecutive orders 
 
 1. Add products, change quantities, remove an item: totals update.
 2. Checkout without a coupon: receipt shows lines and total; stock badge drops.
-3. "Send the same checkout again": banner says the same order was replayed.
+3. Double-click Checkout: one order only (the button ignores clicks while a checkout is running); the cart resets to 0 items.
 4. Admin: after n orders, generate a coupon; generating again shows `NO_ELIGIBLE_MILESTONE`.
 5. Use the coupon at checkout: receipt shows the discount; coupon becomes redeemed.
 6. Change a price in Catalog: the open cart shows the new price.
-7. "Race for the last units": only as many checkouts as there is stock succeed.
+7. Retries and races are exercised by `npm test` (X1–X14) and `npm run edge-cases`, not from the UI.
 
 ## Out of scope
 

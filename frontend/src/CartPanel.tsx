@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Notify } from "./App";
 import { ApiError, api, money, type CartView, type Order } from "./api";
 import { rememberOrder } from "./OrderHistory";
 
-interface LastAttempt {
+interface Attempt {
   cartId: string;
   key: string;
   couponCode?: string;
   expectedSubtotalCents?: number;
 }
+
+const NETWORK_RETRIES = 2;
 
 export function CartPanel(props: {
   cart: CartView | null;
@@ -22,8 +24,8 @@ export function CartPanel(props: {
   const [couponInfo, setCouponInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
-  const [replayNote, setReplayNote] = useState<string | null>(null);
-  const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
+  // A ref, not state: it blocks a second click immediately, before React re-renders the disabled button.
+  const inFlight = useRef(false);
 
   async function checkCoupon() {
     if (!coupon.trim()) return;
@@ -35,19 +37,46 @@ export function CartPanel(props: {
     }
   }
 
-  async function send(attempt: LastAttempt, isRetry: boolean) {
+  /**
+   * Sends the checkout. If the network fails before a response arrives, it retries with the SAME
+   * Idempotency-Key, so the server returns the original order instead of creating a second one.
+   */
+  async function send(attempt: Attempt): Promise<Order> {
+    for (let tryNo = 0; ; tryNo++) {
+      try {
+        return (await api.checkout(attempt.cartId, attempt.key, attempt.couponCode, attempt.expectedSubtotalCents)).data;
+      } catch (e) {
+        const networkError = !(e instanceof ApiError);
+        const stillRunning = e instanceof ApiError && e.code === "REQUEST_IN_PROGRESS";
+        if ((networkError || stillRunning) && tryNo < NETWORK_RETRIES) {
+          await new Promise((r) => setTimeout(r, 800 * (tryNo + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  async function checkout() {
+    if (!cart || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
+    // One key per checkout. Any automatic retry of this checkout reuses it.
+    const attempt: Attempt = {
+      cartId: cart.id,
+      key: crypto.randomUUID(),
+      couponCode: coupon.trim() || undefined,
+      expectedSubtotalCents: cart.subtotalCents,
+    };
     try {
-      const { data, replayed } = await api.checkout(attempt.cartId, attempt.key, attempt.couponCode, attempt.expectedSubtotalCents);
-      setOrder(data);
-      rememberOrder(data.id);
-      setReplayNote(
-        replayed
-          ? `Replayed: the server returned the same order #${data.id.slice(0, 8)}. No new order, no stock charged twice.`
-          : null,
-      );
-      if (!isRetry) props.notify(`Order #${data.id.slice(0, 8)} placed`);
-      await props.onCheckedOut();
+      const placed = await send(attempt);
+      setOrder(placed);
+      rememberOrder(placed.id);
+      props.notify(`Order #${placed.id.slice(0, 8)} placed`);
+      setCoupon("");
+      setCouponInfo(null);
+      // The old cart is now CHECKED_OUT; start an empty one so the shop shows 0 in cart.
+      await Promise.all([props.onCheckedOut(), props.onNewCart()]);
     } catch (e) {
       if (e instanceof ApiError && e.code === "PRICE_CHANGED") {
         // An admin changed a price after this page loaded: show the new prices and let the customer confirm.
@@ -55,24 +84,12 @@ export function CartPanel(props: {
         await props.onCheckedOut();
         props.notify("Prices changed since you opened the page. Review the new total and check out again.", "error");
       } else {
-        props.notify(e instanceof ApiError ? `${e.code}: ${e.message}` : "Checkout failed", "error");
+        props.notify(e instanceof ApiError ? `${e.code}: ${e.message}` : "Checkout failed. Check your connection and try again.", "error");
       }
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
-  }
-
-  function checkout() {
-    if (!cart) return;
-    // A new key per checkout attempt. Retrying reuses it, so the server can recognise the duplicate.
-    const attempt = {
-      cartId: cart.id,
-      key: crypto.randomUUID(),
-      couponCode: coupon.trim() || undefined,
-      expectedSubtotalCents: cart.subtotalCents,
-    };
-    setLastAttempt(attempt);
-    void send(attempt, false);
   }
 
   if (order) {
@@ -102,24 +119,10 @@ export function CartPanel(props: {
           <dt className="grand">Total</dt>
           <dd className="grand">{money(order.totalCents)}</dd>
         </dl>
-        {replayNote && <div className="banner ok">{replayNote}</div>}
-        <div className="stack">
-          <button className="btn ghost" disabled={busy || !lastAttempt} onClick={() => lastAttempt && send(lastAttempt, true)}>
-            Send the same checkout again (same Idempotency-Key)
-          </button>
-          <button
-            className="btn primary"
-            onClick={async () => {
-              setOrder(null);
-              setReplayNote(null);
-              setCoupon("");
-              setCouponInfo(null);
-              await props.onNewCart();
-            }}
-          >
-            Start a new cart
-          </button>
-        </div>
+        <p className="muted small-print">Saved to "Your orders" below.</p>
+        <button className="btn primary wide" onClick={() => setOrder(null)}>
+          Continue shopping
+        </button>
       </aside>
     );
   }
