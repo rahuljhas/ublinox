@@ -16,7 +16,7 @@ Every requirement in `task.md`, where it is enforced, and the test that proves i
 | 8 | Concurrent checkouts never oversell | ✅ | `keyedMutex.ts` + atomic commit | K16, S1 |
 | 9 | Order explains its total after product changes | ✅ | `OrderLine` snapshot | O1, O3 |
 | 10 | Money without float errors | ✅ | `domain/money.ts` (integer cents) | money tests, K19 |
-| 11 | Distinct, useful errors | ✅ | `domain/errors.ts` (16 codes) | every 4xx test |
+| 11 | Distinct, useful errors | ✅ | `domain/errors.ts` (22 codes) | every 4xx test |
 | 12 | Payment fake, choice explained | ✅ | `domain/payment.ts` | K11 |
 | 13 | Coupons configured by n and x | ✅ | `context.ts` (env vars) | M2, K20 |
 | 14 | Coupon only at reached, unrewarded milestone | ✅ | `couponService.ts` | M1–M5 |
@@ -27,9 +27,9 @@ Every requirement in `task.md`, where it is enforced, and the test that proves i
 | 19 | API documented; admin operations identified | ✅ | `README.md`, `/admin/*` | – |
 | 20 | In-memory store still safe under overlap | ✅ | `keyedMutex.ts` | 5 tests fail with locks off |
 | 21 | Multi-instance / production DB explained | ✅ | `DECISIONS.md` §8 | – |
-| 22 | Tests include competing or repeated operations | ✅ | 75 tests + 37 live checks | `npm test`, `npm run edge-cases` |
+| 22 | Tests include competing or repeated operations | ✅ | 111 tests + 37 live checks | `npm test`, `npm run edge-cases` |
 | 23 | **DECISIONS.md** (heavily weighted) | ✅ | `DECISIONS.md`: 10 sections, 12 decisions | – |
-| 24 | Meaningful commit history | ✅ | 9 commits | – |
+| 24 | Meaningful commit history | ✅ | 25+ commits | – |
 | 25 | Approximate time spent stated | ❌ | – | – |
 
 ## Open issues
