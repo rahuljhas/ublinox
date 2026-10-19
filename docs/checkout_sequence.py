@@ -103,12 +103,12 @@ msg(LK, SV, y - 0.85, "locks held", ret=True)
 msg(SV, ST, y - 1.6, "read cart, products, coupon", 6)
 msg(ST, SV, y - 2.2, "current values", ret=True)
 self_msg(SV, y - 2.7, "check rules + price in integer cents", 7, h=0.5)
-ax.text(X[SV] + 0.85, y - 3.55, "cart OPEN & not empty · stock ≥ qty for every line · coupon AVAILABLE\n"
+ax.text(X[SV] + 0.85, y - 3.55, "cart OPEN & not empty · stock ≥ qty for every line · coupon AVAILABLE · subtotal = expectedSubtotalCents (if sent)\n"
         "subtotal = Σ unit_price × qty · discount = round_half_up(subtotal × x / 100) · total = max(0, subtotal − discount)",
         color=MUTED, fontsize=10.3, va="center", linespacing=1.5)
 frame(X[C] - 1.2, X[ID] + 1.9, 14.2, 12.7, "alt", [(14.2, "[ a rule fails ]")])
 msg(SV, ID, 13.75, "release(K)  (client may fix cart and retry)", ret=True, color=ERR)
-msg(SV, C, 13.0, "409 OUT_OF_STOCK · CART_ALREADY_CHECKED_OUT · COUPON_NOT_AVAILABLE   |   422 CART_EMPTY",
+msg(SV, C, 13.0, "409 INSUFFICIENT_INVENTORY · CART_ALREADY_CHECKED_OUT\n409 COUPON_ALREADY_REDEEMED · PRICE_CHANGED · 404 COUPON_NOT_FOUND · 422 CART_EMPTY",
     ret=True, color=ERR)
 
 # ---------------- 8 payment ----------------
@@ -117,7 +117,7 @@ msg(SV, PY, y, "await charge(totalCents)", 8)
 activation(PY, y, y - 0.65)
 msg(PY, SV, y - 0.65, "approved", ret=True, color=OK)
 frame(X[C] - 1.2, X[PY] + 1.9, 11.05, 9.95, "alt", [(11.05, "[ payment declined ]")])
-msg(SV, C, 10.35, "402 PAYMENT_FAILED  (nothing written, locks released, K released)", ret=True, color=ERR)
+msg(SV, C, 10.35, "402 PAYMENT_DECLINED  (nothing written, locks released, K released)", ret=True, color=ERR)
 
 # ---------------- 9 commit ----------------
 y = 9.4
@@ -142,8 +142,8 @@ ax.text(0.9, 3.75, "What this sequence guarantees", fontsize=14, weight="bold", 
 rows = [
     ("Retry after timeout", "same K → step 4 replays the stored 201; no second order, no second stock decrement"),
     ("Two checkouts, same cart", "cart lock serialises them; the second sees CHECKED_OUT → 409"),
-    ("Two carts, last unit", "product lock + stock re-checked under the lock (step 7); the loser gets 409 OUT_OF_STOCK"),
-    ("Two checkouts, same coupon", "coupon lock; the second sees REDEEMED → 409 COUPON_NOT_AVAILABLE"),
+    ("Two carts, last unit", "product lock + stock re-checked under the lock (step 7); the loser gets 409 INSUFFICIENT_INVENTORY"),
+    ("Two checkouts, same coupon", "coupon lock; the second sees REDEEMED → 409 COUPON_ALREADY_REDEEMED"),
     ("Failure anywhere before step 9", "nothing is written, so stock and coupon are never lost"),
 ]
 for i, (k, v) in enumerate(rows):

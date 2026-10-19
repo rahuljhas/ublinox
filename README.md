@@ -102,7 +102,7 @@ curl -s -X POST localhost:3000/carts/$CART/checkout -H 'Idempotency-Key: 3f1c9a7
 
 ## Design summary
 
-The full reasoning will live in `DECISIONS.md`. In short:
+Full reasoning, alternatives and trade-offs: **`DECISIONS.md`**. In short:
 
 - **Checkout** claims the `Idempotency-Key`, locks the cart, then the coupon and products in sorted order, validates stock and coupon, awaits the fake payment, and then commits every write in one synchronous block. Any failure before the commit writes nothing and frees the key.
 - **Locks** are an in-process keyed mutex. They matter only around the payment `await`; code without an `await` cannot interleave in Node.
