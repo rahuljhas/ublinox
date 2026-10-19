@@ -1,14 +1,14 @@
 import { money, type CartView, type Product } from "./api";
 
-const TINTS = ["#ffd6e6", "#ffe3d6", "#f4dcff", "#ffdcef", "#ffe9f1", "#ffd1dc"];
+const TINTS = ["#f4f4f5", "#fff1f6", "#ececee", "#f6f6f7", "#ffe8f0", "#efeff1"];
 
 export function Shop(props: { products: Product[]; cart: CartView | null; onAdd: (productId: string, quantity: number) => void }) {
   const inCart = (id: string) => props.cart?.items.find((item) => item.productId === id)?.quantity ?? 0;
 
   return (
-    <section>
+    <div>
       <div className="section-head">
-        <h2>Products</h2>
+        <h3>All products</h3>
         <span className="muted">{props.products.length} items · prices in USD</span>
       </div>
       <div className="grid">
@@ -40,6 +40,6 @@ export function Shop(props: { products: Product[]; cart: CartView | null; onAdd:
           );
         })}
       </div>
-    </section>
+    </div>
   );
 }
