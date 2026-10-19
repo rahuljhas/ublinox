@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ublinox Checkout Spec</title>
+<link rel="icon" type="image/png" href="../frontend/public/logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" />
+<style>
+  :root {
+    --white: #ffffff; --paper: #fafafa; --mist: #f4f4f5; --line: #ececee; --line-strong: #dcdce0;
+    --black: #0b0b0d; --charcoal: #18181b; --graphite: #27272a; --ink: #111114; --muted: #6b6b73;
+    --brand-500: #5a5fe5; --brand-teal: #49c2d2; --brand-50: #f3f6ff;
+    --brand-gradient: linear-gradient(135deg, #5a5fe5 0%, #4f92db 55%, #49c2d2 100%);
+    --done: #15803d; --done-bg: #f0fdf4; --done-line: #dcfce7;
+    --partial: #b45309; --partial-bg: #fffbeb; --partial-line: #fde68a;
+    --out: #52525b; --out-bg: #f4f4f5; --out-line: #e4e4e7;
+    --radius: 14px;
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink); background: var(--white);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  body { margin: 0; background: var(--white); line-height: 1.5; }
+  h1, h2, h3 { margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  p { margin: 0; }
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 0.82em; }
+  code { background: var(--mist); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* nav */
+  .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: rgba(255,255,255,0.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 18px; }
+  .lockup { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--black); }
+  .lockup img { height: 32px; width: auto; display: block; }
+  .lockup b { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; }
+  .lockup b span { color: var(--brand-teal); }
+  .lockup small { font-weight: 600; color: var(--muted); border-left: 1px solid var(--line-strong); padding-left: 10px; }
+  .nav { display: flex; gap: 2px; margin-left: auto; overflow-x: auto; }
+  .nav a { text-decoration: none; color: var(--muted); font-weight: 600; font-size: 0.88rem; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
+  .nav a:hover { color: var(--ink); background: var(--mist); }
+
+  /* hero */
+  .hero { border-bottom: 1px solid var(--line); background:
+      radial-gradient(55% 90% at 100% 0%, rgba(73,194,210,0.14) 0%, rgba(73,194,210,0) 60%),
+      radial-gradient(45% 70% at 80% 10%, rgba(90,95,229,0.09) 0%, rgba(90,95,229,0) 60%),
+      linear-gradient(180deg, var(--white), var(--paper)); padding: 52px 16px 44px; }
+  .hero-inner { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: end; }
+  .hero h1 { font-size: clamp(2.1rem, 4.4vw, 3.2rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.06; color: var(--black); margin: 10px 0 14px; }
+  .hero h1 span { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 1.05rem; color: var(--muted); max-width: 60ch; }
+  .scorecard { background: var(--charcoal); color: var(--white); border-radius: var(--radius); padding: 22px; display: grid; gap: 16px; box-shadow: 0 30px 60px -32px rgba(11,11,13,0.6); }
+  .scorecard h3 { font-size: 1rem; font-weight: 700; }
+  .score-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .score { background: var(--graphite); border-radius: 12px; padding: 12px; }
+  .score strong { display: block; font-size: 1.9rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .score span { font-size: 0.78rem; color: #a1a1aa; }
+  .score.done strong { color: #86efac; } .score.partial strong { color: #fcd34d; } .score.out strong { color: #d4d4d8; }
+  .bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--graphite); }
+  .bar i { display: block; } .bar .d { background: #4ade80; } .bar .p { background: #fbbf24; } .bar .o { background: #71717a; }
+  .scorecard p { font-size: 0.84rem; color: #a1a1aa; }
+
+  /* sections */
+  main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 40px; }
+  section { padding: 44px 0 8px; }
+  .section-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .section-head h2 { font-size: clamp(1.4rem, 2.4vw, 1.8rem); font-weight: 800; margin-top: 6px; }
+  .section-head p { max-width: 62ch; }
+  .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--black); color: var(--white); font-size: 0.8rem; font-weight: 800; margin-right: 8px; vertical-align: 3px; }
+
+  /* tables */
+  .table-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; background: var(--white); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 760px; }
+  th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 700; background: var(--paper); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: #fcfcfd; }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+  .spec { color: var(--muted); }
+  .ids { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.78rem; color: var(--brand-500); white-space: nowrap; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill.done { color: var(--done); background: var(--done-bg); border-color: var(--done-line); }
+  .pill.partial { color: var(--partial); background: var(--partial-bg); border-color: var(--partial-line); }
+  .pill.out { color: var(--out); background: var(--out-bg); border-color: var(--out-line); }
+
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  /* roles */
+  .roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .card { border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; background: var(--white); display: flex; flex-direction: column; gap: 10px; }
+  .card h3 { font-size: 1.05rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 0.88rem; }
+  .card li { display: flex; gap: 8px; }
+  .card li::before { content: "✓"; font-weight: 800; color: var(--done); }
+  .card li.no::before { content: "–"; color: var(--muted); }
+  .card li.no { color: var(--muted); }
+
+  /* flow */
+  .flow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; counter-reset: step; }
+  .step { border: 1px solid var(--line); border-radius: 12px; padding: 14px; position: relative; background: var(--white); }
+  .step b { display: block; font-size: 0.9rem; margin: 8px 0 4px; }
+  .step p { font-size: 0.8rem; color: var(--muted); }
+  .step .dot { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; color: var(--white); background: var(--black); }
+  .step.key .dot { background: var(--brand-gradient); }
+  .step.key { border-color: #c7d2fe; background: var(--brand-50); }
+  .callout { margin-top: 14px; border-radius: 12px; padding: 14px 16px; background: var(--charcoal); color: #e4e4e7; font-size: 0.9rem; }
+  .callout b { color: var(--white); }
+
+  /* timeline */
+  .timeline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tl { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px 7px 8px; font-weight: 600; font-size: 0.88rem; background: var(--white); }
+  .tl i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 0.7rem; font-weight: 800; color: var(--white); background: var(--done); }
+  .tl.partial i { background: #f59e0b; }
+  .arrow { color: var(--line-strong); font-weight: 800; }
+
+  /* commands */
+  .cmds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  pre { margin: 0; background: var(--black); color: #e4e4e7; border-radius: 12px; padding: 14px 16px; overflow-x: auto; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.8rem; line-height: 1.6; }
+  pre .c { color: #71717a; }
+
+  footer { background: var(--black); color: #a1a1aa; margin-top: 40px; }
+  footer .inner { max-width: 1180px; margin: 0 auto; padding: 24px 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; }
+  footer .lockup { color: var(--white); }
+
+  a:focus-visible { outline: 3px solid #9db3f5; outline-offset: 2px; border-radius: 8px; }
+  @media (max-width: 960px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .roles, .cmds { grid-template-columns: 1fr 1fr; }
+    .flow { grid-template-columns: repeat(2, 1fr); }
+    .lockup small { display: none; }
+  }
+  @media (max-width: 560px) {
+    .roles, .cmds, .flow { grid-template-columns: 1fr; }
+    .nav { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a class="lockup" href="#top"><img src="../frontend/public/logo.png" alt="" /><b>ublinox<span>.</span></b><small>Checkout spec</small></a>
+    <div class="nav">
+      <a href="#roles">Roles</a>
+      <a href="#functional">Functional</a>
+      <a href="#errors">Errors</a>
+      <a href="#edge-cases">Edge cases</a>
+      <a href="#rules">Business rules</a>
+      <a href="#flow">Checkout flow</a>
+      <a href="#testing">Testing</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-inner">
+    <div>
+      <span class="eyebrow">E-commerce requirements · implementation status</span>
+      <h1>Checkout &amp; Rewards <span>Specification</span></h1>
+      <p class="lede">Every requirement from the concise e-commerce spec, what this service does about it, the API behaviour a client sees, and the automated test that proves it. Test IDs refer to <code>docs/TEST_PLAN.md</code>.</p>
+    </div>
+    <aside class="scorecard" aria-label="Status summary">
+      <h3>Coverage across 39 spec items</h3>
+      <div class="score-row">
+        <div class="score done"><strong>22</strong><span>Done</span></div>
+        <div class="score partial"><strong>15</strong><span>Partial</span></div>
+        <div class="score out"><strong>2</strong><span>Not in scope</span></div>
+      </div>
+      <div class="bar" aria-hidden="true"><i class="d" style="width:56.4%"></i><i class="p" style="width:38.5%"></i><i class="o" style="width:5.1%"></i></div>
+      <p>"Partial" means the assignment's scope is met but this spec asks for more (taxes, shipping, refunds, expiry, product deactivation). "Not in scope": payment callbacks and an order status lifecycle.</p>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+  <!-- 1. Roles -->
+  <section id="roles">
+    <div class="section-head">
+      <div><span class="eyebrow">Section 1</span><h2><span class="num">1</span>Roles and responsibilities</h2></div>
+      <div class="legend"><span class="pill done">Done</span><span class="pill partial">Partial</span><span class="pill out">Not in scope</span></div>
+    </div>
+    <div class="roles">
+      <div class="card">
+        <h3>Customer <span class="pill done">Done</span></h3>
+        <ul>
+          <li>Manage cart: add, change, remove</li>
+          <li>Apply a coupon at checkout</li>
+          <li>Checkout, safe to retry</li>
+          <li>View an order by id</li>
+          <li class="no">Order history list</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Admin <span class="pill partial">Partial</span></h3>
+        <ul>
+          <li>Change price and stock</li>
+          <li>Generate and list coupons</li>
+          <li>Sales summary report</li>
+          <li class="no">Create / deactivate products</li>
+          <li class="no">Manage orders</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>System <span class="pill done">Done</span></h3>
+        <ul>
+          <li>Validate every request (zod)</li>
+          <li>Totals in integer cents</li>
+          <li>Enforce stock under lock</li>
+          <li>Enforce single-use coupons</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Payment service <span class="pill partial">Partial</span></h3>
+        <ul>
+          <li>Fake gateway: approve or decline</li>
+          <li>Decline writes nothing (402)</li>
+          <li class="no">Async confirmations / webhooks</li>
+          <li class="no">Refunds</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Functional -->
+  <section id="functional">
+    <div class="section-head">
+      <div><span class="eyebrow">Section 2</span><h2><span class="num">2</span>Functional requirements</h2></div>
+      <p class="muted">What each module must do, and what the API provides today.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Module</th><th>Spec asks for</th><th>Status</th><th>Implementation</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td>Product</td><td class="spec">Create, update, deactivate, validate price and availability</td><td><span class="pill partial">Partial</span></td><td>6 products seeded from <code>products.json</code>; <code>PATCH /admin/products/{id}</code> updates price and stock with validation. No create or deactivate endpoint.</td><td class="ids">G1 U1–U4</td></tr>
+        <tr><td>Cart</td><td class="spec">Add, edit quantity, delete items, validate products</td><td><span class="pill done">Done</span></td><td><code>POST /carts</code>, <code>PUT</code> / <code>DELETE /carts/{id}/items/{pid}</code>. Unknown product 404, bad quantity 400, above stock 409.</td><td class="ids">C1–C6 A1–A12 D1–D5</td></tr>
+        <tr><td>Checkout</td><td class="spec">Validate cart, price, inventory and coupon before creating the order</td><td><span class="pill done">Done</span></td><td>All checks run under the cart, product and coupon locks, then payment, then one atomic commit.</td><td class="ids">K1–K24</td></tr>
+        <tr><td>Order</td><td class="spec">Unique orders, item snapshots, order history</td><td><span class="pill partial">Partial</span></td><td>UUID per order; each line stores name, unit price, quantity, line total. <code>GET /orders/{id}</code> only, no history list.</td><td class="ids">O1–O3</td></tr>
+        <tr><td>Pricing</td><td class="spec">Gross, discount, net, taxes, shipping, final total</td><td><span class="pill partial">Partial</span></td><td>Subtotal, discount (half-up), total ≥ 0, all in cents. Taxes and shipping not modelled.</td><td class="ids">K19 K20</td></tr>
+        <tr><td>Coupon</td><td class="spec">Create, validate, apply, expire, enforce usage limits</td><td><span class="pill partial">Partial</span></td><td>Generated per milestone, looked up case-insensitively, single use, redeemed atomically. No expiry.</td><td class="ids">M1–M8 Q1–Q4 K18</td></tr>
+        <tr><td>Inventory</td><td class="spec">Reserve and release stock safely; prevent overselling</td><td><span class="pill done">Done</span></td><td>Stock is taken only at commit, after payment approval, so there is nothing to release on failure. Never oversold.</td><td class="ids">K16 X1–X14 S1</td></tr>
+        <tr><td>Admin</td><td class="spec">Manage catalog, inventory, coupons, orders</td><td><span class="pill partial">Partial</span></td><td>Price, stock, coupons and report under <code>/admin/*</code>. No order management.</td><td class="ids">M U R</td></tr>
+        <tr><td>Summary</td><td class="spec">Products sold, gross revenue, discounts, net revenue, order count</td><td><span class="pill done">Done</span></td><td><code>GET /admin/report</code>, derived only from stored orders and coupons; read-only.</td><td class="ids">R1–R4</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- 3. Errors -->
+  <section id="errors">
+    <div class="section-head">
+      <div><span class="eyebrow">Section 3</span><h2><span class="num">3</span>Error handling</h2></div>
+      <p class="muted">Every error is <code>{ error: { code, message, details } }</code>. Clients branch on <code>code</code>.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Error</th><th>Spec expects</th><th>Status</th><th>What the API returns</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td>Invalid product</td><td class="spec">Reject request</td><td><span class="pill done">Done</span></td><td><code>404 PRODUCT_NOT_FOUND</code></td><td class="ids">A7 U4</td></tr>
+        <tr><td>Invalid price or quantity</td><td class="spec">Validation error</td><td><span class="pill done">Done</span></td><td><code>400 VALIDATION_ERROR</code> with the failing field in <code>details.issues</code></td><td class="ids">A5 A6 A11 U2 U3</td></tr>
+        <tr><td>Insufficient stock</td><td class="spec">Reject checkout or quantity</td><td><span class="pill done">Done</span></td><td><code>409 INSUFFICIENT_INVENTORY</code> with requested vs available per line</td><td class="ids">A4 K5 X3 X4</td></tr>
+        <tr><td>Invalid / expired coupon</td><td class="spec">Reject with reason</td><td><span class="pill partial">Partial</span></td><td><code>404 COUPON_NOT_FOUND</code>, <code>409 COUPON_ALREADY_REDEEMED</code>. Coupons do not expire.</td><td class="ids">K7 K8</td></tr>
+        <tr><td>Payment timeout</td><td class="spec">Reconcile before retry</td><td><span class="pill partial">Partial</span></td><td>Fake gateway cannot time out. A decline returns <code>402 PAYMENT_DECLINED</code>, writes nothing, and frees the key.</td><td class="ids">K11 X9</td></tr>
+        <tr><td>Duplicate request</td><td class="spec">No duplicate order or charge</td><td><span class="pill done">Done</span></td><td>Same <code>Idempotency-Key</code> replays the order (<code>Idempotent-Replayed: true</code>); in-flight duplicate <code>409 REQUEST_IN_PROGRESS</code></td><td class="ids">K12 K13 K14</td></tr>
+        <tr><td>Database / service failure</td><td class="spec">Roll back or recover safely</td><td><span class="pill partial">Partial</span></td><td>No database. Any failure before the commit leaves state untouched; the commit itself has no await and cannot be interrupted.</td><td class="ids">K11 X6</td></tr>
+        <tr><td>Concurrent update</td><td class="spec">Transactions or version checks</td><td><span class="pill done">Done</span></td><td>Per-key async mutex (cart, product, coupon) acquired in sorted order: the in-memory equivalent of row locks.</td><td class="ids">K21 K24 X5 X11</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- 4. Edge cases -->
+  <section id="edge-cases">
+    <div class="section-head">
+      <div><span class="eyebrow">Section 4</span><h2><span class="num">4</span>Edge cases</h2></div>
+      <p class="muted">Each scenario, the behaviour you get, and the test that runs it against a real HTTP server.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Scenario</th><th>Spec expects</th><th>Status</th><th>Actual behaviour</th><th>Tests</th></tr></thead>
+      <tbody>
+        <tr><td>Two consecutive orders</td><td class="spec">Independent records</td><td><span class="pill done">Done</span></td><td>Each checkout creates its own order with its own id and snapshot.</td><td class="ids">K1 M4</td></tr>
+        <tr><td>First succeeds, second fails</td><td class="spec">First order unchanged</td><td><span class="pill done">Done</span></td><td>The failed attempt writes nothing; the first order and its stock effect stay as they were.</td><td class="ids">K6 X6 X7</td></tr>
+        <tr><td>Two orders, last item</td><td class="spec">Only one gets it</td><td><span class="pill done">Done</span></td><td>Stock is re-checked under the product lock; 50 shoppers for 3 units gives exactly 3 orders.</td><td class="ids">K16 X3</td></tr>
+        <tr><td>Double-click checkout</td><td class="spec">No duplicate order</td><td><span class="pill done">Done</span></td><td>Same key: second click gets 409 while running, or the same order after.</td><td class="ids">K13 K17</td></tr>
+        <tr><td>Price changes during checkout</td><td class="spec">Revalidate and notify</td><td><span class="pill partial">Partial</span></td><td>The price change waits for the in-flight checkout; that order pays the price it validated. The cart always shows live prices. No push notification.</td><td class="ids">C4 X11</td></tr>
+        <tr><td>Same coupon, concurrently</td><td class="spec">Atomic redemption limit</td><td><span class="pill done">Done</span></td><td>Coupon lock: one discounted order, the other <code>409 COUPON_ALREADY_REDEEMED</code>.</td><td class="ids">K18 X13</td></tr>
+        <tr><td>Duplicate payment callback</td><td class="spec">Process once</td><td><span class="pill out">Not in scope</span></td><td>Payment is a synchronous fake; there are no callbacks.</td><td class="ids">–</td></tr>
+        <tr><td>Inventory released twice</td><td class="spec">No double increase</td><td><span class="pill done">Done</span></td><td>By design: stock is never reserved before commit, so there is nothing to release.</td><td class="ids">X9 K11</td></tr>
+        <tr><td>Product deactivated while in cart</td><td class="spec">Block checkout</td><td><span class="pill partial">Partial</span></td><td>No deactivation flag. Setting stock to 0 blocks checkout with 409 and the cart shows a warning.</td><td class="ids">K5 X14</td></tr>
+        <tr><td>Order events out of order</td><td class="spec">Block invalid transitions</td><td><span class="pill out">Not in scope</span></td><td>Orders have one state (placed). Only the cart moves <code>OPEN → CHECKED_OUT</code>, once.</td><td class="ids">A9 D4</td></tr>
+        <tr><td>Response lost after success</td><td class="spec">Safe retry</td><td><span class="pill done">Done</span></td><td>Retry with the same key returns the stored 201; no second order or stock change.</td><td class="ids">K12</td></tr>
+        <tr><td>Failed order and nth-order discount</td><td class="spec">Count only qualifying orders</td><td><span class="pill done">Done</span></td><td>Only successful orders count toward milestones; declined or rejected checkouts do not.</td><td class="ids">M7</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- 5. Business rules -->
+  <section id="rules">
+    <div class="section-head">
+      <div><span class="eyebrow">Section 5</span><h2><span class="num">5</span>Business rules: decisions made</h2></div>
+      <p class="muted">Where the spec said "decision required", this is what was chosen.</p>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Rule</th><th>Question</th><th>Status</th><th>Decision</th></tr></thead>
+      <tbody>
+        <tr><td>Order statuses</td><td class="spec">Allowed statuses and transitions</td><td><span class="pill partial">Partial</span></td><td>An order is created only when checkout succeeds, so it has a single state. Cart: <code>OPEN → CHECKED_OUT</code>, exactly once.</td></tr>
+        <tr><td>Nth-order discount</td><td class="spec">Qualifying count and discount</td><td><span class="pill done">Done</span></td><td>Every <b>n</b>th successful order (default 5) unlocks one coupon for <b>x%</b> (default 10). Set by <code>COUPON_EVERY_N_ORDERS</code> and <code>COUPON_PERCENT_OFF</code>. Orders that used a coupon still count. One coupon per milestone, generated by an admin call.</td></tr>
+        <tr><td>Coupon eligibility</td><td class="spec">Expiry, minimum spend, usage limits</td><td><span class="pill done">Done</span></td><td>Any customer, single use, no expiry, no minimum spend. The percentage is fixed when the coupon is generated.</td></tr>
+        <tr><td>Inventory timing</td><td class="spec">When stock is reserved and released</td><td><span class="pill done">Done</span></td><td>Not reserved when added to a cart. Taken atomically at checkout, after payment is approved. Never released, because it is never held early.</td></tr>
+        <tr><td>Payment failure</td><td class="spec">Retry, reconciliation, recovery</td><td><span class="pill partial">Partial</span></td><td><code>402 PAYMENT_DECLINED</code>; nothing written; the Idempotency-Key is freed so the client can retry. No reconciliation (fake gateway).</td></tr>
+        <tr><td>Revenue reporting</td><td class="spec">Tax, shipping, refund, discount treatment</td><td><span class="pill partial">Partial</span></td><td>Gross = sum of subtotals; net = gross − discounts. No tax, shipping or refunds exist yet.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- Flow -->
+  <section id="flow">
+    <div class="section-head">
+      <div><span class="eyebrow">How it works</span><h2><span class="num">6</span>Checkout flow</h2></div>
+      <p class="muted"><code>POST /carts/{id}/checkout</code> with header <code>Idempotency-Key</code>. Source: <code>backend/src/services/checkoutService.ts</code>.</p>
+    </div>
+    <div class="flow">
+      <div class="step key"><span class="dot">1</span><b>Claim key</b><p>Done → replay order. Running → 409.</p></div>
+      <div class="step"><span class="dot">2</span><b>Lock cart</b><p>No edits during checkout.</p></div>
+      <div class="step"><span class="dot">3</span><b>Lock items</b><p>Coupon + products, sorted: no deadlock.</p></div>
+      <div class="step"><span class="dot">4</span><b>Validate</b><p>Open cart, stock, coupon; price in cents.</p></div>
+      <div class="step key"><span class="dot">5</span><b>Await payment</b><p>The only point other requests can run.</p></div>
+      <div class="step"><span class="dot">6</span><b>Commit</b><p>Stock, coupon, order, cart in one block, no await.</p></div>
+      <div class="step"><span class="dot">7</span><b>Release</b><p>In <code>finally</code>; next shopper starts at 4.</p></div>
+    </div>
+    <p class="callout"><b>Why locks in single-threaded Node?</b> Without them, two shoppers both pass step 4 (stock = 1), both await payment, and both commit: stock −1. The lock makes the second shopper wait until the first has committed, so its step 4 sees stock = 0.</p>
+  </section>
+
+  <!-- Implementation order -->
+  <section id="order">
+    <div class="section-head">
+      <div><span class="eyebrow">Delivery</span><h2><span class="num">7</span>Implementation order</h2></div>
+    </div>
+    <div class="timeline">
+      <span class="tl partial"><i>✓</i>Product</span><span class="arrow">→</span>
+      <span class="tl"><i>✓</i>Cart</span><span class="arrow">→</span>
+      <span class="tl partial"><i>✓</i>Pricing</span><span class="arrow">→</span>
+      <span class="tl partial"><i>✓</i>Coupon</span><span class="arrow">→</span>
+      <span class="tl"><i>✓</i>Inventory validation</span><span class="arrow">→</span>
+      <span class="tl"><i>✓</i>Checkout</span><span class="arrow">→</span>
+      <span class="tl partial"><i>✓</i>Orders</span><span class="arrow">→</span>
+      <span class="tl partial"><i>✓</i>Admin</span><span class="arrow">→</span>
+      <span class="tl"><i>✓</i>Reporting</span><span class="arrow">→</span>
+      <span class="tl"><i>✓</i>Error &amp; concurrency testing</span>
+    </div>
+    <p class="muted" style="margin-top:10px;font-size:0.85rem">Green: complete. Amber: built to the assignment's scope, with the extra items from this spec deferred.</p>
+  </section>
+
+  <!-- Testing -->
+  <section id="testing">
+    <div class="section-head">
+      <div><span class="eyebrow">Verification</span><h2><span class="num">8</span>How to test it</h2></div>
+      <p class="muted">89 automated tests plus 37 live checks. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
+    </div>
+    <div class="cmds">
+      <pre><span class="c"># automated (89 tests, ~2 s)</span>
+cd backend
+npm test
+npx vitest run -t "X3"</pre>
+      <pre><span class="c"># live checks vs running server</span>
+cd backend && npm start
+<span class="c"># other terminal</span>
+npm run edge-cases</pre>
+      <pre><span class="c"># UI</span>
+cd frontend && npm run dev
+<span class="c"># open</span>
+http://localhost:5173</pre>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="inner">
+    <a class="lockup" href="#top"><img src="../frontend/public/logo.png" alt="" /><b>ublinox<span>.</span></b></a>
+    <span>Checkout &amp; Rewards Service · Node.js + TypeScript · in-memory store · github.com/rahuljhas/ublinox</span>
+  </div>
+</footer>
+
+</body>
+</html>
