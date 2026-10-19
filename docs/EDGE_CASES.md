@@ -145,6 +145,10 @@ The error says per product how many were requested and how many are available, s
 | Two carts list the same products in opposite order | No deadlock (locks taken in sorted order) | X5 |
 | Admin restocks during a race | Never more sales than units | X10 |
 | Invalid `expectedSubtotalCents` (negative, decimal, text) | `400 VALIDATION_ERROR` | E10 |
+| A slow checkout holds a product and the line gets long | After `LOCK_WAIT_MS` (10 s) a waiting shopper gets `503 SERVER_BUSY` + `Retry-After: 2`, is never charged, and can retry with the same key | T1–T3, L2 |
+| The payment provider never answers | `504 PAYMENT_TIMEOUT` after `PAYMENT_TIMEOUT_MS` (15 s); nothing written; locks and key released; another shopper can buy | T4, T5 |
+| A retry arrives after the key's 24 h memory expired | Cannot duplicate: the cart is already `CHECKED_OUT`, so `409 CART_ALREADY_CHECKED_OUT` with the existing `orderId` | T6 |
+| 100+ shoppers check out at once | No 5xx; stock, money and orders add up; limited product sells exactly its units | L1, `npm run load` |
 | Server restarts | All data, including idempotency keys, is lost (in-memory store). A retry after a restart would be treated as new. Production needs a database. | – (documented limitation) |
 
 ---

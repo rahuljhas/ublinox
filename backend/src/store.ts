@@ -8,6 +8,7 @@ export class Store {
   readonly coupons = new Map<string, Coupon>();
   readonly idempotency = new Map<string, IdempotencyRecord>();
   placedOrders = 0;
+  lastIdempotencySweep = 0;
 
   constructor(seed: Product[]) {
     for (const product of seed) this.products.set(product.id, { ...product });

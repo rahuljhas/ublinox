@@ -9,21 +9,47 @@ export interface CheckoutResult extends CheckoutResponse {
   replayed: boolean;
 }
 
+/** Forget completed Idempotency-Keys older than the TTL. Runs at most once per minute, from checkout itself. */
+function sweepExpiredKeys(ctx: Context) {
+  const { store, config } = ctx;
+  const now = Date.now();
+  if (now - store.lastIdempotencySweep < Math.min(60_000, config.idempotencyTtlMs)) return;
+  store.lastIdempotencySweep = now;
+  for (const [key, record] of store.idempotency) {
+    if (record.state === "COMPLETED" && now - record.completedAt > config.idempotencyTtlMs) store.idempotency.delete(key);
+  }
+}
+
+/** Waits for the payment provider, but not forever: a hung provider must not hold the locks indefinitely. */
+async function chargeWithTimeout(ctx: Context, input: { cartId: string; amountCents: number; idempotencyKey: string }) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(Errors.paymentTimeout()), ctx.config.paymentTimeoutMs);
+  });
+  try {
+    return await Promise.race([ctx.payment.charge(input), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Checkout flow (see docs/checkout-sequence.png):
  *  1. claim the Idempotency-Key (synchronous check-and-set, so two requests cannot both claim it)
  *  2. lock the cart, then the coupon and products (sorted, so no deadlock)
  *  3. validate cart state, stock and coupon, price the order in integer cents, and compare with the
  *     subtotal the client showed (if sent)
- *  4. await payment (the only await while holding locks)
+ *  4. await payment (the only await while holding locks), but give up after paymentTimeoutMs (504)
  *  5. commit every write in one synchronous block, then store the response under the key
  * Any failure before step 5 writes nothing and frees the key, so the client can fix and retry.
+ * Waiting for a lock is also bounded (lockWaitMs): a request stuck in line gets 503 SERVER_BUSY.
  */
 export async function checkout(
   ctx: Context,
   input: { cartId: string; idempotencyKey: string; couponCode?: string; expectedSubtotalCents?: number },
 ): Promise<CheckoutResult> {
   const { store } = ctx;
+  sweepExpiredKeys(ctx);
   const couponCode = input.couponCode?.trim().toUpperCase() || null;
   const fingerprint = JSON.stringify({ cartId: input.cartId, couponCode });
 
@@ -85,7 +111,7 @@ export async function checkout(
       ? applyPercentDiscount(subtotalCents, coupon.percentOff)
       : { discountCents: 0, totalCents: subtotalCents };
 
-    const payment = await ctx.payment.charge({ cartId: cart.id, amountCents: totalCents });
+    const payment = await chargeWithTimeout(ctx, { cartId: cart.id, amountCents: totalCents, idempotencyKey: input.idempotencyKey });
     if (!payment.approved) throw Errors.paymentDeclined(payment.reason);
 
     // Commit: synchronous from here to the return, so no other request can observe a half-done checkout.
@@ -112,7 +138,7 @@ export async function checkout(
     store.placedOrders += 1;
 
     const response: CheckoutResponse = { status: 201, body: order };
-    store.idempotency.set(input.idempotencyKey, { state: "COMPLETED", fingerprint, response });
+    store.idempotency.set(input.idempotencyKey, { state: "COMPLETED", fingerprint, response, completedAt: Date.now() });
     return { ...response, replayed: false };
   } catch (error) {
     store.idempotency.delete(input.idempotencyKey);

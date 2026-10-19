@@ -262,10 +262,10 @@
         <tr><td>Invalid price or quantity</td><td class="spec">Validation error</td><td><span class="pill done">Done</span></td><td><code>400 VALIDATION_ERROR</code> with the failing field in <code>details.issues</code></td><td class="ids">A5 A6 A11 U2 U3</td></tr>
         <tr><td>Insufficient stock</td><td class="spec">Reject checkout or quantity</td><td><span class="pill done">Done</span></td><td><code>409 INSUFFICIENT_INVENTORY</code> with requested vs available per line</td><td class="ids">A4 K5 X3 X4</td></tr>
         <tr><td>Invalid / expired coupon</td><td class="spec">Reject with reason</td><td><span class="pill partial">Partial</span></td><td><code>404 COUPON_NOT_FOUND</code>, <code>409 COUPON_ALREADY_REDEEMED</code>. Coupons do not expire.</td><td class="ids">K7 K8</td></tr>
-        <tr><td>Payment timeout</td><td class="spec">Reconcile before retry</td><td><span class="pill partial">Partial</span></td><td>Fake gateway cannot time out. A decline returns <code>402 PAYMENT_DECLINED</code>, writes nothing, and frees the key.</td><td class="ids">K11 X9</td></tr>
+        <tr><td>Payment timeout</td><td class="spec">Reconcile before retry</td><td><span class="pill partial">Partial</span></td><td>A provider that does not answer within 15 s gives <code>504 PAYMENT_TIMEOUT</code>: nothing is written, locks and key are released, and the key is forwarded to the provider. A decline gives <code>402</code>. Reconciliation is not built.</td><td class="ids">K11 X9 T4 T5</td></tr>
         <tr><td>Duplicate request</td><td class="spec">No duplicate order or charge</td><td><span class="pill done">Done</span></td><td>Same <code>Idempotency-Key</code> replays the order (<code>Idempotent-Replayed: true</code>); in-flight duplicate <code>409 REQUEST_IN_PROGRESS</code></td><td class="ids">K12 K13 K14</td></tr>
         <tr><td>Database / service failure</td><td class="spec">Roll back or recover safely</td><td><span class="pill partial">Partial</span></td><td>No database. Any failure before the commit leaves state untouched; the commit itself has no await and cannot be interrupted.</td><td class="ids">K11 X6</td></tr>
-        <tr><td>Concurrent update</td><td class="spec">Transactions or version checks</td><td><span class="pill done">Done</span></td><td>Per-key async mutex (cart, product, coupon) acquired in sorted order: the in-memory equivalent of row locks.</td><td class="ids">K21 K24 X5 X11</td></tr>
+        <tr><td>Concurrent update</td><td class="spec">Transactions or version checks</td><td><span class="pill done">Done</span></td><td>Per-key async mutex (cart, product, coupon) acquired in sorted order: the in-memory equivalent of row locks. Waiting is bounded: after 10 s a request gets <code>503 SERVER_BUSY</code> and never gets charged.</td><td class="ids">K21 K24 X5 X11 T1 L2</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -356,17 +356,19 @@
   <section id="testing">
     <div class="section-head">
       <div><span class="eyebrow">Verification</span><h2><span class="num">8</span>How to test it</h2></div>
-      <p class="muted">111 automated tests plus 37 live checks. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
+      <p class="muted">124 automated tests, 37 live checks and a load test. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
     </div>
     <div class="cmds">
-      <pre><span class="c"># automated (111 tests, ~3 s)</span>
+      <pre><span class="c"># automated (124 tests, ~4 s)</span>
 cd backend
 npm test
 npx vitest run -t "X3"</pre>
       <pre><span class="c"># live checks vs running server</span>
 cd backend && npm start
 <span class="c"># other terminal</span>
-npm run edge-cases</pre>
+npm run edge-cases
+<span class="c"># load: many shoppers at once</span>
+USERS=100 npm run load</pre>
       <pre><span class="c"># UI</span>
 cd frontend && npm run dev
 <span class="c"># open</span>

@@ -217,6 +217,40 @@ Stock of the test product is 3. "Locks off" shows whether the test fails when th
 
 E1–E10 are described case by case in `docs/EDGE_CASES.md`: consecutive orders and statuses, double-click checkout, repeated add clicks, no refunds needed for race losers, partial stock (1 then 3 of 3), never-negative stock and payments, and admin price changes while the customer's page is open (`409 PRICE_CHANGED`).
 
+### Backpressure and timeouts (`hardening.test.ts`)
+
+| ID | Case | Expected | Fails if protection removed |
+|---|---|---|---|
+| T1 | Shopper waits longer than `lockWaitMs` behind a slow checkout | 503 `SERVER_BUSY`, `Retry-After: 2`, never charged, cart stays open | no lock timeout |
+| T2 | A shopper gives up in line, then another arrives | the next shopper is not blocked by the abandoned place | abandoned place never handed on |
+| T3 | Same key retried after a 503 | 201 (key was freed) | – |
+| T3b | A multi-key acquire times out on its second key | the first key is released | partial locks kept |
+| T4 | Payment provider never answers | 504 `PAYMENT_TIMEOUT`; stock, orders and cart unchanged | no payment timeout |
+| T5 | After a payment timeout | locks free: another shopper buys; same key can retry | – |
+| T5b | Idempotency key sent to the provider | charge record carries the key | – |
+| T6 | Key older than the TTL | forgotten; a late retry gets 409 `CART_ALREADY_CHECKED_OUT` with the existing `orderId`, no second order | no key sweep |
+| T7 | Key inside the TTL | still replays | – |
+| T8 | `lockWaitMs`, `paymentTimeoutMs`, `idempotencyTtlMs` not positive integers | startup error | – |
+
+### Load (`load.test.ts` and `scripts/load-test.ts`)
+
+| ID | Case | Expected |
+|---|---|---|
+| L1 | 120 shoppers (random carts, 1–3 products) check out at once | no 5xx; stock sold + remaining = starting; limited product sells exactly its 3 units; one order per cart; report = orders; nobody who lost was charged |
+| L2 | 30 shoppers, 40 ms payment, `lockWaitMs` 100 | mix of 201 and 503 (each 503 has `Retry-After`); shed requests never charged; every shed shopper can retry with the same key and succeed |
+| L3 | 40 shoppers double-click (same key twice at once) | exactly one 201 and one 409 `REQUEST_IN_PROGRESS` each; 40 orders, 40 charges |
+
+`npm run load` runs the same kind of scenario against a **live** server over HTTP (hot product race, mixed shoppers with admin price edits, double-clicks, coupon race), then checks stock conservation, order counts, revenue, coupons and that only expected status codes appeared.
+
+Measured on a laptop (150 ms simulated payment, 4 phases):
+
+| Run | Shoppers | `LOCK_WAIT_MS` | Orders | Checkout p50 / p95 / max | 503 shed | 5xx | Invariants |
+|---|---|---|---|---|---|---|---|
+| A | 100 | 10 000 | 81 (8.0/s) | 1.2 s / 6.3 s / 6.3 s | 0 | 0 | all pass |
+| B | 250 | 3 000 | 63 (8.9/s) | 3.0 s / 3.0 s / 3.3 s | 175 | 0 | all pass |
+
+Reading: throughput is bound by payment latency per product (shoppers for the same product are served one at a time). The lock-wait timeout caps how long anyone waits and sheds the excess cleanly instead of letting the queue grow.
+
 ### Invariant soak test
 
 | ID | Case | Expected |

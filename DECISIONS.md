@@ -7,7 +7,7 @@ Code references are relative to `backend/src/`. Test IDs refer to `docs/TEST_PLA
 
 1. [System invariants](#1-system-invariants)
 2. [Ambiguities and chosen semantics](#2-ambiguities-and-chosen-semantics)
-3. [Material design decisions](#3-material-design-decisions) (12 decisions in 9 groups: Locks, Checkout flow, Idempotency, Inventory and pricing, Money, Coupons, Persistence, Payment, API)
+3. [Material design decisions](#3-material-design-decisions) (13 decisions in 10 groups: Locks, Checkout flow, Idempotency, Backpressure and timeouts, Inventory and pricing, Money, Coupons, Persistence, Payment, API)
 4. [Transaction, concurrency and idempotency strategy](#4-transaction-concurrency-and-idempotency-strategy)
 5. [Money and rounding rules](#5-money-and-rounding-rules)
 6. [Error model](#6-error-model)
@@ -123,6 +123,31 @@ Code references are relative to `backend/src/`. Test IDs refer to `docs/TEST_PLA
 
 Keys never expire (deferred). Tests: K12–K15, K23, E2, X8.
 
+### Backpressure and timeouts
+
+#### Decision: Bound every wait: lock-wait timeout, payment timeout, key expiry
+
+**Context:** A load test (`scripts/load-test.ts`: 100 shoppers, 150 ms simulated payment) passed every invariant but showed checkout p95 latency of 6 s and about 8 orders/s. The cause is Decision "Validate under the locks, then pay": a checkout holds its products' locks while it awaits payment, so shoppers for the same product are served one at a time. Throughput per product is about 1 / payment latency; with a real provider near 1 s that is about one order per second per hot product. Three risks followed: the queue behind a slow checkout has no limit, a provider that never answers would hold a product's lock forever, and completed idempotency keys were never freed.
+
+**Options considered:**
+1. Leave the waits unbounded.
+2. Reserve stock in a synchronous block, release the product locks, pay, then confirm or restore the stock. This removes the queue.
+3. Keep the design and bound each wait.
+
+**Choice:** Option 3:
+
+| Protection | Setting | Behaviour |
+|---|---|---|
+| Lock-wait timeout | `LOCK_WAIT_MS`, default 10 s | A request still waiting gives up with `503 SERVER_BUSY` and `Retry-After: 2`. Nothing is written, it is never charged, its key is freed. |
+| Payment timeout | `PAYMENT_TIMEOUT_MS`, default 15 s | `504 PAYMENT_TIMEOUT`. Nothing is written, locks and key are released. The Idempotency-Key is forwarded to the provider so a real provider can dedupe a retry. |
+| Key expiry | `IDEMPOTENCY_TTL_MS`, default 24 h | Completed keys are swept lazily, at most once a minute. A late retry of an expired key still cannot duplicate: the cart is `CHECKED_OUT`, so it gets `409 CART_ALREADY_CHECKED_OUT` with the existing `orderId`. |
+
+The browser retries `SERVER_BUSY` and `REQUEST_IN_PROGRESS` up to twice with the same key.
+
+**Why:** Option 2 is the right production step, but it changes what shoppers see. While a payment is in flight its units are already taken, so a second shopper is refused even if the first payment then fails (today test X9 shows the second shopper gets the unit). It also needs a release step that runs exactly once, for both stock and the coupon. That is not worth the risk for a demo-scale service whose correctness argument is simplest when nothing is written before payment succeeds. Bounding the waits gives backpressure without touching that argument. Evidence from the same load script with 250 shoppers and `LOCK_WAIT_MS=3000`: checkout p95 3.0 s (max 3.3 s) instead of a queue that keeps growing, 175 requests shed with 503, zero 5xx, every invariant still passing, throughput unchanged at 8.9 orders/s.
+
+**Consequences:** Under a burst some shoppers get 503 and must retry. Throughput per hot product is still capped by payment latency; Option 2 is the fix when that matters (Section 10). A 504 leaves the real outcome unknown with a real provider, so reconciliation (outbox plus a status check) is deferred (Section 7). The mutex hands an abandoned place in line on to the next waiter; without that, one timed-out request would block the product forever (test T2). Tests: T1–T8, L1–L3.
+
 ### Inventory and pricing
 
 #### Decision: No stock reservation in the cart
@@ -228,7 +253,7 @@ Keys never expire (deferred). Tests: K12–K15, K23, E2, X8.
 
 **Options considered:** HTTP status plus a free-text message; RFC 7807 problem details; a custom envelope with a stable code.
 
-**Choice:** Every error is `{ error: { code, message, details } }` with 22 codes (`domain/errors.ts`). See Section 6.
+**Choice:** Every error is `{ error: { code, message, details } }` with 24 codes (`domain/errors.ts`). See Section 6.
 
 **Why:** Clients branch on a stable `code`; `details` carries what they need to act, such as `available` per line or the existing `orderId`. It is simpler than RFC 7807 and carries the same information.
 
@@ -257,7 +282,16 @@ How the decisions above combine on `POST /carts/{id}/checkout`:
 | Coupon generation | No `await`, so it cannot interleave (M5) |
 | Report and order history | Read-only; computed from committed orders only (R4, H4) |
 
-**Verification:** 111 automated tests run against a real HTTP server per test. With locks disabled, the race tests fail (X3, X4, X11, X13, X14, K16–K18, K21, S1). With lock sorting removed, X5 deadlocks. `npm run edge-cases` runs 37 checks against a live server.
+**Verification:** 124 automated tests run against a real HTTP server per test. With locks disabled, the race tests fail (X3, X4, X11, X13, X14, K16–K18, K21, S1, L1, L2). With lock sorting removed, X5 deadlocks. Removing each timeout or the key sweep fails T1, T2, T3b, T4 or T6. `npm run edge-cases` runs 37 checks and `npm run load` a concurrent-shoppers scenario against a live server.
+
+**Measured behaviour** (`npm run load`, laptop, 150 ms simulated payment; stock conservation, order counts, revenue, coupon counts and status codes all checked):
+
+| Run | Shoppers | `LOCK_WAIT_MS` | Orders | Checkout p50 / p95 / max | Shed (503) | 5xx |
+|---|---|---|---|---|---|---|
+| A | 100 | 10 s | 81 (8.0/s) | 1.2 s / 6.3 s / 6.3 s | 0 | 0 |
+| B | 250 | 3 s | 63 (8.9/s) | 3.0 s / 3.0 s / 3.3 s | 175 | 0 |
+
+All invariants held in both runs. Latency grows with the number of shoppers per product (they are served one at a time) and is capped by the lock-wait timeout.
 
 ## 5. Money and rounding rules
 
@@ -282,6 +316,8 @@ How the decisions above combine on `POST /carts/{id}/checkout`:
 | 409 | Valid request that conflicts with current state: `INSUFFICIENT_INVENTORY`, `CART_ALREADY_CHECKED_OUT`, `COUPON_ALREADY_REDEEMED`, `PRICE_CHANGED`, `REQUEST_IN_PROGRESS`, `NO_ELIGIBLE_MILESTONE` |
 | 413 | `PAYLOAD_TOO_LARGE` |
 | 422 | Well-formed but meaningless: `CART_EMPTY`, `IDEMPOTENCY_KEY_REUSED` |
+| 503 | `SERVER_BUSY`: waited longer than `LOCK_WAIT_MS` for a lock; sends `Retry-After: 2` |
+| 504 | `PAYMENT_TIMEOUT`: the provider did not answer within `PAYMENT_TIMEOUT_MS` |
 | 500 | Unexpected server errors only |
 
 Checkout returns the first failing check, in a fixed order, and writes nothing. The full catalogue (when each code occurs, its `details`, what a client should do) is in `docs/ERRORS.md`.
@@ -292,13 +328,13 @@ Checkout returns the first failing check, in a fixed order, and writes nothing. 
 |---|---|---|
 | Catalog | 6 seeded products; admin price and stock edits | Create / deactivate products (not in the brief) |
 | Cart | Create, view with live prices and stock warnings, set quantity, remove | Cart expiry |
-| Checkout | Idempotent, locked, validate → pay → commit, price-change guard | Lock and payment timeouts (Section 10) |
+| Checkout | Idempotent, locked, validate → pay → commit, price-change guard, bounded lock wait (503), payment timeout (504) | Reserve-then-pay to lift the per-product throughput limit (Section 10) |
 | Orders | Snapshot lines, `CONFIRMED` status, `GET /orders/{id}`, paginated `GET /admin/orders` | Shipping, cancellation, refunds, per-customer history (no accounts) |
 | Coupons | Milestones, admin generation, single use, atomic redemption | Expiry, minimum spend, per-customer limits |
 | Pricing | Subtotal, discount, total in cents | Taxes, shipping |
 | Payment | Async fake with declines and a charge log | Real provider, timeouts, webhooks, reconciliation |
 | Admin | Report, coupons, order history, catalog edits | Authentication and authorisation |
-| Storage | In-memory, one instance | Database, persistence across restarts, idempotency key expiry |
+| Storage | In-memory, one instance, idempotency keys expire after 24 h | Database, persistence across restarts |
 | Frontend | Small React UI: shop, cart, coupon checkout, order history, admin report; single-click checkout that retries network failures with the same key | Not a focus, per the brief |
 
 ## 8. Multiple instances and production scale
@@ -336,16 +372,17 @@ I used Claude (Claude Code) as a pair programmer for scaffolding, tests, diagram
 3. **A deadlock test that could not deadlock.** The first X5 passed even with lock sorting removed, so it proved nothing. I had it rebuilt with a third shopper holding a product, which reproduces the deadlock when sorting is removed.
 4. **Documentation drift.** A generated sequence diagram used error codes that did not exist in the API (`OUT_OF_STOCK`, `PAYMENT_FAILED`). I caught it by comparing it with `domain/errors.ts`.
 5. **Bugs found by probing, not by generated tests.** A body over 16 KB and a malformed URL both returned 500. Both are fixed (413 and 400) and covered by P5 and P8.
+6. **A load test that reported a false failure.** The first version of `load-test.ts` reset a product's stock to a value read at the start of the run, which broke its own stock-conservation check mid-run. I traced the mismatch to the script (the server's order, revenue and coupon numbers all matched) before touching the service, and fixed the script to account for any stock it adds.
 
 ## 10. With two more hours
 
 | Priority | What | Why |
 |---|---|---|
-| 1 | Lock-wait and payment timeouts (`503 TRY_AGAIN`) | The weakest point: a hung payment queues every shopper behind it for that product |
-| 2 | Expire idempotency keys (24 h) | Memory grows without bound |
-| 3 | Public `GET /rewards/progress`; stop the customer page reading `/admin/report` | Keeps the customer / admin boundary clean |
-| 4 | Persist to SQLite behind the same service interface | Survives restarts; a step toward Section 8 |
-| 5 | Load test the hot-product path (e.g. 500 concurrent checkouts) | Measure lock wait times under contention |
+| 1 | Reserve stock and the coupon in a synchronous block, pay outside the product locks, confirm or restore (exactly once) | Lifts the measured limit: throughput per hot product is about 1 / payment latency. Changes what shoppers see while a payment is in flight (test X9) |
+| 2 | Public `GET /rewards/progress`; stop the customer page reading `/admin/report` | Keeps the customer / admin boundary clean |
+| 3 | Persist to SQLite behind the same service interface | Survives restarts; a step toward Section 8 |
+| 4 | Reconcile `PAYMENT_TIMEOUT` outcomes (outbox plus a status check at the provider) | After a 504 the real charge state is unknown with a real provider |
+| 5 | Authentication, and per-customer coupon and order history | Admin routes are public; coupons are store-wide |
 
 ---
 

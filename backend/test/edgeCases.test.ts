@@ -67,7 +67,7 @@ describe("edge-case assignment", () => {
     const winner = res.find((r) => r.status === 201)!;
     expect(res.filter((r) => r.status === 409)).toHaveLength(3);
     // Stock is checked before payment, under the lock: losers never reach the payment step.
-    expect(t.payment.charges).toEqual([{ cartId: winner.body.cartId, amountCents: 7500, approved: true }]);
+    expect(t.payment.charges).toEqual([expect.objectContaining({ cartId: winner.body.cartId, amountCents: 7500, approved: true })]);
     expect(stockOf(t, "p-last")).toBe(0);
   });
 

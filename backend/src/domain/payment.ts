@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 export type PaymentResult = { approved: true; reference: string } | { approved: false; reason: string };
 
 export interface PaymentGateway {
-  charge(input: { cartId: string; amountCents: number }): Promise<PaymentResult>;
+  /** `idempotencyKey` is forwarded so a real provider can dedupe a retry after a timeout. */
+  charge(input: { cartId: string; amountCents: number; idempotencyKey: string }): Promise<PaymentResult>;
 }
 
 /**
@@ -13,12 +14,18 @@ export interface PaymentGateway {
  */
 export class FakePaymentGateway implements PaymentGateway {
   declineNext = 0;
+  /** Makes the next charge never answer, to test the payment timeout. */
+  hangNext = 0;
   /** Every charge attempt, approved or not. Lets tests prove losers of a race are never charged. */
-  readonly charges: Array<{ cartId: string; amountCents: number; approved: boolean }> = [];
+  readonly charges: Array<{ cartId: string; amountCents: number; idempotencyKey: string; approved: boolean }> = [];
 
   constructor(private readonly delayMs = 0) {}
 
-  async charge(input: { cartId: string; amountCents: number }): Promise<PaymentResult> {
+  async charge(input: { cartId: string; amountCents: number; idempotencyKey: string }): Promise<PaymentResult> {
+    if (this.hangNext > 0) {
+      this.hangNext -= 1;
+      return new Promise<never>(() => {}); // the provider never answers
+    }
     await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     if (this.declineNext > 0) {
       this.declineNext -= 1;

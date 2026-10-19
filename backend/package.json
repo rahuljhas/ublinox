@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "edge-cases": "tsx scripts/edge-cases.ts"
+    "edge-cases": "tsx scripts/edge-cases.ts",
+    "load": "tsx scripts/load-test.ts"
   },
   "dependencies": {
     "express": "^5.1.0",

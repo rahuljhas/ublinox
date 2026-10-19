@@ -47,7 +47,7 @@ export function createApp(ctx: Context) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Content-Type, Idempotency-Key");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-    res.header("Access-Control-Expose-Headers", "Idempotent-Replayed");
+    res.header("Access-Control-Expose-Headers", "Idempotent-Replayed, Retry-After");
     if (req.method === "OPTIONS") return void res.sendStatus(204);
     next();
   });
@@ -102,6 +102,7 @@ export function createApp(ctx: Context) {
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof AppError) {
+      if (error.status === 503) res.set("Retry-After", "2"); // a busy server: ask the client to wait, then retry
       return void res.status(error.status).json({ error: { code: error.code, message: error.message, details: error.details ?? {} } });
     }
     if (error instanceof SyntaxError && "body" in error) {

@@ -47,8 +47,9 @@ export function CartPanel(props: {
         return (await api.checkout(attempt.cartId, attempt.key, attempt.couponCode, attempt.expectedSubtotalCents)).data;
       } catch (e) {
         const networkError = !(e instanceof ApiError);
-        const stillRunning = e instanceof ApiError && e.code === "REQUEST_IN_PROGRESS";
-        if ((networkError || stillRunning) && tryNo < NETWORK_RETRIES) {
+        // Safe to repeat with the same key (nothing was written): the first attempt is still running, or the server was busy (503).
+        const safeToRepeat = e instanceof ApiError && (e.code === "REQUEST_IN_PROGRESS" || e.code === "SERVER_BUSY");
+        if ((networkError || safeToRepeat) && tryNo < NETWORK_RETRIES) {
           await new Promise((r) => setTimeout(r, 800 * (tryNo + 1)));
           continue;
         }

@@ -37,12 +37,13 @@ npm install
 npm run dev
 ```
 
-Run the backend tests (111 automated tests), and the live edge-case run against a started server (37 checks):
+Run the backend tests (124 automated tests), and the live edge-case run against a started server (37 checks):
 
 ```bash
 cd backend
 npm test
 npm run edge-cases   # needs the server running
+USERS=100 npm run load   # concurrent-shoppers load test, needs the server running; changes data on the target
 ```
 
 Configuration (environment variables for the backend):
@@ -53,6 +54,9 @@ Configuration (environment variables for the backend):
 | `COUPON_EVERY_N_ORDERS` | `5` | n: every n-th placed order unlocks one coupon |
 | `COUPON_PERCENT_OFF` | `10` | x: coupon discount in whole percent (1–100) |
 | `PAYMENT_DELAY_MS` | `150` | Delay of the fake payment provider |
+| `LOCK_WAIT_MS` | `10000` | Longest a request waits in line for a cart, product or coupon before `503 SERVER_BUSY` |
+| `PAYMENT_TIMEOUT_MS` | `15000` | Longest checkout waits for the payment provider before `504 PAYMENT_TIMEOUT` |
+| `IDEMPOTENCY_TTL_MS` | `86400000` | How long a completed Idempotency-Key is remembered for replays (24 h) |
 
 Data resets on every restart (in-memory store).
 
@@ -77,7 +81,7 @@ Every error has the same shape, and `code` is stable for clients to branch on:
 | `GET /carts/{cartId}` | – | 200 cart with current prices, line totals, subtotal, stock warnings | 404 `CART_NOT_FOUND` |
 | `PUT /carts/{cartId}/items/{productId}` | `{ "quantity": 1-99 }` | 200 cart (adds the item or sets its quantity) | 400 `VALIDATION_ERROR`, 404 `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT` |
 | `DELETE /carts/{cartId}/items/{productId}` | – | 200 cart | 404 `ITEM_NOT_IN_CART`, 409 `CART_ALREADY_CHECKED_OUT` |
-| `POST /carts/{cartId}/checkout` | `{ "couponCode"?: string, "expectedSubtotalCents"?: int }` + header `Idempotency-Key` (8–100 chars) | 201 order. A retry with the same key returns the same order with header `Idempotent-Replayed: true` | 400 `IDEMPOTENCY_KEY_REQUIRED`, 402 `PAYMENT_DECLINED`, 404 `COUPON_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT`, 409 `COUPON_ALREADY_REDEEMED`, 409 `PRICE_CHANGED`, 409 `REQUEST_IN_PROGRESS`, 422 `CART_EMPTY`, 422 `IDEMPOTENCY_KEY_REUSED` |
+| `POST /carts/{cartId}/checkout` | `{ "couponCode"?: string, "expectedSubtotalCents"?: int }` + header `Idempotency-Key` (8–100 chars) | 201 order. A retry with the same key returns the same order with header `Idempotent-Replayed: true` | 400 `IDEMPOTENCY_KEY_REQUIRED`, 402 `PAYMENT_DECLINED`, 404 `COUPON_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT`, 409 `COUPON_ALREADY_REDEEMED`, 409 `PRICE_CHANGED`, 409 `REQUEST_IN_PROGRESS`, 422 `CART_EMPTY`, 422 `IDEMPOTENCY_KEY_REUSED`, 503 `SERVER_BUSY`, 504 `PAYMENT_TIMEOUT` |
 | `GET /orders/{orderId}` | – | 200 order with line snapshot (name, unit price, quantity), subtotal, discount, total, coupon | 404 `ORDER_NOT_FOUND` |
 | `GET /coupons/{code}` | – | 200 `{ code, percentOff, status }` | 404 `COUPON_NOT_FOUND` |
 

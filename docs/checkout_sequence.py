@@ -98,7 +98,7 @@ ax.text(X[ID] + 0.25, 19.15, "[ new K ]  record K = IN_PROGRESS, continue", colo
 y = 18.5
 msg(SV, LK, y, "acquire(cart:id, product:* sorted, coupon:code)", 5)
 activation(LK, y, 6.35)
-ax.text(X[LK] + 0.25, y - 0.4, "sorted order → no deadlock", color=MUTED, fontsize=10.5, va="center")
+ax.text(X[LK] + 0.25, y - 0.4, "sorted order → no deadlock · waits ≤ LOCK_WAIT_MS, else 503 SERVER_BUSY", color=MUTED, fontsize=10.5, va="center")
 msg(LK, SV, y - 0.85, "locks held", ret=True)
 msg(SV, ST, y - 1.6, "read cart, products, coupon", 6)
 msg(ST, SV, y - 2.2, "current values", ret=True)
@@ -116,8 +116,8 @@ y = 12.1
 msg(SV, PY, y, "await charge(totalCents)", 8)
 activation(PY, y, y - 0.65)
 msg(PY, SV, y - 0.65, "approved", ret=True, color=OK)
-frame(X[C] - 1.2, X[PY] + 1.9, 11.05, 9.95, "alt", [(11.05, "[ payment declined ]")])
-msg(SV, C, 10.35, "402 PAYMENT_DECLINED  (nothing written, locks released, K released)", ret=True, color=ERR)
+frame(X[C] - 1.2, X[PY] + 1.9, 11.05, 9.95, "alt", [(11.05, "[ payment declined or no answer ]")])
+msg(SV, C, 10.35, "402 PAYMENT_DECLINED · 504 PAYMENT_TIMEOUT  (nothing written, K released)", ret=True, color=ERR)
 
 # ---------------- 9 commit ----------------
 y = 9.4

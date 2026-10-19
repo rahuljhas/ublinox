@@ -66,11 +66,17 @@ export interface CheckoutResponse {
 
 export type IdempotencyRecord =
   | { state: "IN_PROGRESS"; fingerprint: string }
-  | { state: "COMPLETED"; fingerprint: string; response: CheckoutResponse };
+  | { state: "COMPLETED"; fingerprint: string; response: CheckoutResponse; completedAt: number };
 
 export interface Config {
   /** Every n-th placed order unlocks one coupon. */
   couponEveryNOrders: number;
   /** Coupon discount in whole percent (1-100). */
   couponPercentOff: number;
+  /** Longest a request waits in line for a cart, product or coupon before getting 503 SERVER_BUSY. */
+  lockWaitMs: number;
+  /** Longest checkout waits for the payment provider before getting 504 PAYMENT_TIMEOUT. */
+  paymentTimeoutMs: number;
+  /** How long a completed Idempotency-Key is remembered for replays. */
+  idempotencyTtlMs: number;
 }
