@@ -14,7 +14,7 @@ export const Errors = {
   validation: (details: Record<string, unknown>) =>
     new AppError(400, "VALIDATION_ERROR", "The request is invalid.", details),
   idempotencyKeyRequired: () =>
-    new AppError(400, "IDEMPOTENCY_KEY_REQUIRED", "Send an Idempotency-Key header (8-100 characters) with checkout."),
+    new AppError(400, "IDEMPOTENCY_KEY_REQUIRED", "Send one Idempotency-Key header with checkout: 8-100 characters, letters, digits and . _ : - only."),
   productNotFound: (productId: string) =>
     new AppError(404, "PRODUCT_NOT_FOUND", `Product ${productId} does not exist.`, { productId }),
   cartNotFound: (cartId: string) => new AppError(404, "CART_NOT_FOUND", `Cart ${cartId} does not exist.`, { cartId }),

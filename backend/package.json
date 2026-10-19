@@ -8,7 +8,8 @@
     "start": "tsx src/server.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "edge-cases": "tsx scripts/edge-cases.ts"
   },
   "dependencies": {
     "express": "^5.1.0",

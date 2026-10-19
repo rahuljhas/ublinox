@@ -360,3 +360,98 @@ describe("PATCH /admin/products/{id}", () => {
     expect((await t.api().patch("/admin/products/ghost").send({ inventory: 1 }).expect(404)).body.error.code).toBe("PRODUCT_NOT_FOUND");
   });
 });
+
+describe("robustness: malformed requests never cause a 500", () => {
+  it("P5 body over 16 KB → 413 PAYLOAD_TOO_LARGE", async () => {
+    const t = setup();
+    const cartId = (await t.api().post("/carts")).body.id;
+    const res = await t.api().put(`/carts/${cartId}/items/p-mid`).send({ quantity: 1, pad: "x".repeat(20_000) }).expect(413);
+    expect(res.body.error.code).toBe("PAYLOAD_TOO_LARGE");
+  });
+
+  it("P6 wrong content type is treated as an empty body → 400 VALIDATION_ERROR", async () => {
+    const t = setup();
+    const cartId = (await t.api().post("/carts")).body.id;
+    const res = await t.api().put(`/carts/${cartId}/items/p-mid`).set("Content-Type", "text/plain").send('{"quantity":1}').expect(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("P7 unsupported method → 404 ROUTE_NOT_FOUND", async () => {
+    const t = setup();
+    const cartId = (await t.api().post("/carts")).body.id;
+    expect((await t.api().patch(`/carts/${cartId}`).send({}).expect(404)).body.error.code).toBe("ROUTE_NOT_FOUND");
+  });
+
+  it("P8 malformed URL encoding → 400 BAD_REQUEST", async () => {
+    const t = setup();
+    expect((await t.api().get("/carts/%E0%A4%A").expect(400)).body.error.code).toBe("BAD_REQUEST");
+  });
+
+  it.each([
+    ["array", "[1]", 400, "VALIDATION_ERROR"],
+    ["null", "null", 400, "INVALID_JSON"],
+    ["number", "5", 400, "INVALID_JSON"],
+  ])("A11 JSON %s instead of an object is rejected", async (_label, raw, status, code) => {
+    const t = setup();
+    const cartId = (await t.api().post("/carts")).body.id;
+    const res = await t.api().put(`/carts/${cartId}/items/p-mid`).set("Content-Type", "application/json").send(raw).expect(status);
+    expect(res.body.error.code).toBe(code);
+  });
+
+  it("K22 couponCode must be a string", async () => {
+    const t = setup();
+    const cartId = await t.cartWith({ "p-mid": 1 });
+    const res = await t.api().post(`/carts/${cartId}/checkout`).set("Idempotency-Key", "coupon-type-key").send({ couponCode: 123 }).expect(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("K23 two Idempotency-Key headers (joined with a comma) are rejected, not merged into one key", async () => {
+    const t = setup();
+    const cartId = await t.cartWith({ "p-mid": 1 });
+    const res = await t.api().post(`/carts/${cartId}/checkout`).set("Idempotency-Key", "first-key-001, second-key-02") // what Node gives for two headers.send({}).expect(400);
+    expect(res.body.error.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
+    expect(t.ctx.store.orders.size).toBe(0);
+  });
+});
+
+describe("more state and concurrency edges", () => {
+  it("C6 a checked-out cart can still be viewed and points to its order", async () => {
+    const t = setup();
+    const cartId = await t.cartWith({ "p-mid": 1 });
+    const order = (await t.checkout(cartId, "view-after-key").expect(201)).body;
+    expect((await t.api().get(`/carts/${cartId}`).expect(200)).body).toMatchObject({ status: "CHECKED_OUT", orderId: order.id });
+  });
+
+  it("A12 concurrent edits to one cart are applied one at a time; the cart stays consistent", async () => {
+    const t = setup();
+    const cartId = (await t.api().post("/carts")).body.id;
+    const quantities = [1, 2, 3, 4, 5, 6, 7, 8];
+    const results = await Promise.all(quantities.map((q) => t.api().put(`/carts/${cartId}/items/p-mid`).send({ quantity: q })));
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    const cart = (await t.api().get(`/carts/${cartId}`)).body;
+    expect(cart.items).toHaveLength(1);
+    expect(quantities).toContain(cart.items[0].quantity);
+    expect(cart.subtotalCents).toBe(cart.items[0].quantity * 1450);
+  });
+
+  it("K24 an admin stock change sent during a checkout waits for it, so stock is never double-counted", async () => {
+    const t = setup({ paymentDelayMs: 60 });
+    const cartId = await t.cartWith({ "p-last": 2 });
+    const checkoutReq = t.checkout(cartId, "admin-race-key");
+    await new Promise((r) => setTimeout(r, 15)); // checkout holds the product lock while awaiting payment
+    const patchReq = t.api().patch("/admin/products/p-last").send({ inventory: 10 });
+
+    const [order, patch] = await Promise.all([checkoutReq, patchReq]);
+    expect(order.status).toBe(201);
+    // The admin value is applied after the checkout committed (3 - 2 = 1, then set to 10), never in the middle.
+    expect(patch.body.inventory).toBe(10);
+    expect(t.ctx.store.products.get("p-last")!.inventory).toBe(10);
+  });
+
+  it("D5 removing the last item and checking out → 422 CART_EMPTY", async () => {
+    const t = setup();
+    const cartId = await t.cartWith({ "p-mid": 1 });
+    await t.api().delete(`/carts/${cartId}/items/p-mid`).expect(200);
+    expect((await t.checkout(cartId, "emptied-cart-key").expect(422)).body.error.code).toBe("CART_EMPTY");
+  });
+});

@@ -23,11 +23,12 @@ npm install
 npm run dev
 ```
 
-Run the backend tests:
+Run the backend tests (75 automated tests), and the live edge-case run against a started server (37 checks):
 
 ```bash
 cd backend
 npm test
+npm run edge-cases   # needs the server running
 ```
 
 Configuration (environment variables for the backend):

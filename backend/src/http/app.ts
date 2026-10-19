@@ -10,7 +10,8 @@ import { buildReport } from "../services/reportService.js";
 
 const quantityBody = z.object({ quantity: z.number().int().min(1).max(99) }).strict();
 const checkoutBody = z.object({ couponCode: z.string().trim().min(1).max(40).optional() }).strict();
-const idempotencyKey = z.string().min(8).max(100);
+// Letters, digits and . _ : - only. Rejects two headers joined by a comma into one ambiguous key.
+const idempotencyKey = z.string().min(8).max(100).regex(/^[A-Za-z0-9._:-]+$/);
 const productPatch = z
   .object({
     priceCents: z.number().int().min(0).max(100_000_000).optional(),
@@ -87,6 +88,17 @@ export function createApp(ctx: Context) {
     }
     if (error instanceof SyntaxError && "body" in error) {
       return void res.status(400).json({ error: { code: "INVALID_JSON", message: "The request body is not valid JSON.", details: {} } });
+    }
+    // Client errors raised by Express itself (body too large, bad URL encoding, ...) stay 4xx.
+    const status = typeof error === "object" && error !== null ? Number((error as { status?: unknown }).status) : NaN;
+    if (status >= 400 && status < 500) {
+      const [code, message] =
+        status === 413
+          ? ["PAYLOAD_TOO_LARGE", "The request body is larger than 16 KB."]
+          : status === 415
+            ? ["UNSUPPORTED_MEDIA_TYPE", "Send the body as application/json."]
+            : ["BAD_REQUEST", "The request could not be understood."];
+      return void res.status(status).json({ error: { code, message, details: {} } });
     }
     console.error(error);
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Something went wrong on our side.", details: {} } });

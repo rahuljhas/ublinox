@@ -27,6 +27,23 @@
 - The fake payment gateway has a delay (20–50 ms) so racing requests overlap during the payment `await`, and `declineNext` forces a payment failure.
 - Test config: coupon every **n = 2** orders, **x = 10%**. Test products: `p-cheap` $1.99 ×100, `p-mid` $14.50 ×50, `p-last` $75.00 ×3.
 
+### Live black-box run
+
+`backend/scripts/edge-cases.ts` runs 37 of these cases against a **running** server using only HTTP, and prints a PASS/FAIL table:
+
+```bash
+cd backend && npm start          # terminal 1
+cd backend && npm run edge-cases # terminal 2 (BASE_URL=... to target another host)
+```
+
+### Bugs found by edge-case probing
+
+| Case | Before | After |
+|---|---|---|
+| P5 body over 16 KB | 500 `INTERNAL_ERROR` | 413 `PAYLOAD_TOO_LARGE` |
+| P8 malformed URL encoding | 500 `INTERNAL_ERROR` | 400 `BAD_REQUEST` |
+| K23 two `Idempotency-Key` headers | merged into one key `"a, b"` and accepted | 400; keys allow only letters, digits and `. _ : -` |
+
 ## Cases by endpoint
 
 ### Platform
@@ -37,6 +54,10 @@
 | P2 | Unknown route | 404 `ROUTE_NOT_FOUND` |
 | P3 | Malformed JSON body | 400 `INVALID_JSON` |
 | P4 | CORS preflight `OPTIONS` | 204 with `Idempotency-Key` allowed |
+| P5 | Body over 16 KB | 413 `PAYLOAD_TOO_LARGE` (was 500 before the fix) |
+| P6 | Body sent as `text/plain` | treated as empty → 400 `VALIDATION_ERROR` |
+| P7 | Unsupported method on a known path | 404 `ROUTE_NOT_FOUND` |
+| P8 | Malformed URL encoding (`/carts/%E0%A4%A`) | 400 `BAD_REQUEST` (was 500 before the fix) |
 
 ### `GET /products`
 
@@ -54,6 +75,7 @@
 | C3 | Get unknown cart | 404 `CART_NOT_FOUND` |
 | C4 | View prices | line totals and subtotal use **current** prices |
 | C5 | Stock drops below cart quantity | 200 with `inStock: false` and a warning |
+| C6 | View a checked-out cart | 200, `CHECKED_OUT`, points to its `orderId` |
 
 ### `PUT /carts/{id}/items/{productId}`
 
@@ -69,6 +91,8 @@
 | A8 | Unknown cart | 404 `CART_NOT_FOUND` |
 | A9 | Cart already checked out | 409 `CART_ALREADY_CHECKED_OUT` |
 | A10 | Product with zero stock | 409 `INSUFFICIENT_INVENTORY` |
+| A11 | JSON array / `null` / number instead of an object | 400 `VALIDATION_ERROR` or `INVALID_JSON` |
+| A12 | 8 concurrent edits to one cart | all 200; one consistent line, subtotal matches |
 
 ### `DELETE /carts/{id}/items/{productId}`
 
@@ -78,6 +102,7 @@
 | D2 | Item not in cart | 404 `ITEM_NOT_IN_CART` |
 | D3 | Unknown cart | 404 `CART_NOT_FOUND` |
 | D4 | Cart already checked out | 409 `CART_ALREADY_CHECKED_OUT` |
+| D5 | Remove the last item, then checkout | 422 `CART_EMPTY` |
 
 ### `POST /carts/{id}/checkout`
 
@@ -104,6 +129,9 @@
 | K19 | Discount rounding through the API | $10.05 at 10% → $1.01 off |
 | K20 | 100% coupon | total 0, never negative |
 | K21 | Cart edits while its checkout waits on payment | edit waits for the lock, then gets 409 `CART_ALREADY_CHECKED_OUT`; order matches the cart at checkout |
+| K22 | `couponCode` is a number | 400 `VALIDATION_ERROR` |
+| K23 | Two `Idempotency-Key` headers (Node joins them with a comma) | 400 `IDEMPOTENCY_KEY_REQUIRED`, not merged into one key |
+| K24 | Admin stock change sent while a checkout waits on payment | the change waits for the product lock and applies after the commit |
 
 ### `GET /orders/{id}`
 
