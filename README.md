@@ -17,9 +17,11 @@ Backend for a small store: carts, checkout that is safe to retry, inventory that
 | Store (frontend) | https://ublinox.vercel.app | Vercel |
 | API (backend) | https://ublinox-api.onrender.com (try `/health`, `/products`) | Render, free plan, Singapore, 1 instance |
 
+Checks against the live API: `BASE_URL=https://ublinox-api.onrender.com npm run edge-cases` passes 36 of 37 on a freshly restarted instance; the one miss (P8, a malformed URL) returns Render's own `520` because its proxy rejects the URL before the app sees it. `npm run load` changes data, so restart the API afterwards.
+
 Notes: the API keeps data in memory, so every redeploy or restart resets it to the seed. The free plan sleeps after ~15 minutes idle; the first request then takes 30–60 seconds.
 
-Redeploy: the API redeploys automatically on every push to `main` (`render.yaml`). The frontend deploys with `cd frontend && vercel deploy --prod` (`VITE_API_URL` is set in the Vercel project).
+Redeploy: neither service deploys on `git push` (Render was created from the public repo URL, so it gets no push events). API: `render deploys create srv-dbasmass728c739hftlg --commit <sha> --wait`. Frontend: `cd frontend && vercel deploy --prod` (`VITE_API_URL` is set in the Vercel project). To reset the API's in-memory data: `render restart srv-dbasmass728c739hftlg --confirm`.
 
 ## Run it
 
