@@ -240,7 +240,7 @@ describe("POST /carts/{id}/checkout", () => {
   it("K21 a cart edit sent during checkout waits for the lock and then sees the cart closed", async () => {
     const t = setup({ paymentDelayMs: 60 });
     const cartId = await t.cartWith({ "p-mid": 1 });
-    const checkoutReq = t.checkout(cartId, "edit-during-key");
+    const checkoutReq = t.checkout(cartId, "edit-during-key").then((r) => r); // .then() sends the request now
     await new Promise((r) => setTimeout(r, 15)); // checkout is now waiting on payment while holding the cart lock
     const editReq = t.api().put(`/carts/${cartId}/items/p-mid`).send({ quantity: 9 });
 
@@ -437,7 +437,7 @@ describe("more state and concurrency edges", () => {
   it("K24 an admin stock change sent during a checkout waits for it, so stock is never double-counted", async () => {
     const t = setup({ paymentDelayMs: 60 });
     const cartId = await t.cartWith({ "p-last": 2 });
-    const checkoutReq = t.checkout(cartId, "admin-race-key");
+    const checkoutReq = t.checkout(cartId, "admin-race-key").then((r) => r); // .then() sends the request now
     await new Promise((r) => setTimeout(r, 15)); // checkout holds the product lock while awaiting payment
     const patchReq = t.api().patch("/admin/products/p-last").send({ inventory: 10 });
 

@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Run the backend tests (75 automated tests), and the live edge-case run against a started server (37 checks):
+Run the backend tests (89 automated tests), and the live edge-case run against a started server (37 checks):
 
 ```bash
 cd backend

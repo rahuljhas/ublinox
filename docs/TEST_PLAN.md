@@ -181,6 +181,27 @@ cd backend && npm run edge-cases # terminal 2 (BASE_URL=... to target another ho
 | U3 | Negative, decimal or string values; unknown field | 400 `VALIDATION_ERROR` |
 | U4 | Unknown product | 404 `PRODUCT_NOT_FOUND` |
 
+### Many shoppers, one product (`contention.test.ts`)
+
+Stock of the test product is 3. "Locks off" shows whether the test fails when the protection it targets is removed.
+
+| ID | Case | Expected | Fails if protection removed |
+|---|---|---|---|
+| X1 | 10 shoppers add all 3 units to their carts | all 200; stock still 3 (carts do not reserve) | – (design rule) |
+| X2 | 3 shoppers, 3 units, check out together | all 201; stock 0 | – |
+| X3 | 50 shoppers race for 3 units | exactly 3 × 201, 47 × 409 `INSUFFICIENT_INVENTORY` | locks off |
+| X4 | Quantities 2, 2, 1 race for 3 units | 3 sold; loser told `available < requested` | locks off |
+| X5 | Two carts list the same products in opposite order, while a third holds one | all finish (no deadlock) | lock sorting removed → hangs |
+| X6 | One item in a multi-item cart sells out | whole checkout 409; other items' stock untouched | – |
+| X7 | Loser lowers quantity, retries with same key | 201 | – |
+| X8 | Failed attempt retried with same key, then after restock | 409, 409 (re-evaluated, not cached), then 201 | – |
+| X9 | Last unit: first payer is declined | next shopper gets it; 1 order, stock 0 | – |
+| X10 | Restock arrives mid-race | wins ≤ restocked amount; stock never negative | – |
+| X11 | Price change sent while a checkout pays | price change waits; in-flight order pays old price, next pays new | locks off |
+| X12 | Double-clicked "add" (two identical PUTs) | quantity 2, not 3 (PUT sets, does not add) | – |
+| X13 | Last unit and the only coupon contested together | one winner gets both; coupon points to that order | locks off |
+| X14 | After a sell-out | losers' carts show `inStock: false`; new adds 409 | locks off |
+
 ### Invariant soak test
 
 | ID | Case | Expected |
