@@ -13,15 +13,19 @@ export interface PaymentGateway {
  */
 export class FakePaymentGateway implements PaymentGateway {
   declineNext = 0;
+  /** Every charge attempt, approved or not. Lets tests prove losers of a race are never charged. */
+  readonly charges: Array<{ cartId: string; amountCents: number; approved: boolean }> = [];
 
   constructor(private readonly delayMs = 0) {}
 
-  async charge(_input: { cartId: string; amountCents: number }): Promise<PaymentResult> {
+  async charge(input: { cartId: string; amountCents: number }): Promise<PaymentResult> {
     await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     if (this.declineNext > 0) {
       this.declineNext -= 1;
+      this.charges.push({ ...input, approved: false });
       return { approved: false, reason: "card_declined" };
     }
+    this.charges.push({ ...input, approved: true });
     return { approved: true, reference: `fake_${randomUUID().slice(0, 8)}` };
   }
 }

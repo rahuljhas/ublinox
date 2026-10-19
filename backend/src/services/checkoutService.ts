@@ -13,14 +13,15 @@ export interface CheckoutResult extends CheckoutResponse {
  * Checkout flow (see docs/checkout-sequence.png):
  *  1. claim the Idempotency-Key (synchronous check-and-set, so two requests cannot both claim it)
  *  2. lock the cart, then the coupon and products (sorted, so no deadlock)
- *  3. validate cart state, stock and coupon, and price the order in integer cents
+ *  3. validate cart state, stock and coupon, price the order in integer cents, and compare with the
+ *     subtotal the client showed (if sent)
  *  4. await payment (the only await while holding locks)
  *  5. commit every write in one synchronous block, then store the response under the key
  * Any failure before step 5 writes nothing and frees the key, so the client can fix and retry.
  */
 export async function checkout(
   ctx: Context,
-  input: { cartId: string; idempotencyKey: string; couponCode?: string },
+  input: { cartId: string; idempotencyKey: string; couponCode?: string; expectedSubtotalCents?: number },
 ): Promise<CheckoutResult> {
   const { store } = ctx;
   const couponCode = input.couponCode?.trim().toUpperCase() || null;
@@ -70,6 +71,16 @@ export async function checkout(
       };
     });
     const subtotalCents = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
+
+    // The client may send the subtotal it showed the customer. If an admin changed a price since,
+    // stop and let the customer review instead of silently charging a different amount.
+    if (input.expectedSubtotalCents !== undefined && input.expectedSubtotalCents !== subtotalCents) {
+      throw Errors.priceChanged({
+        expectedSubtotalCents: input.expectedSubtotalCents,
+        currentSubtotalCents: subtotalCents,
+        lines: lines.map(({ productId, name, unitPriceCents }) => ({ productId, name, unitPriceCents })),
+      });
+    }
     const { discountCents, totalCents } = coupon
       ? applyPercentDiscount(subtotalCents, coupon.percentOff)
       : { discountCents: 0, totalCents: subtotalCents };
@@ -80,6 +91,7 @@ export async function checkout(
     // Commit: synchronous from here to the return, so no other request can observe a half-done checkout.
     const order: Order = {
       id: randomUUID(),
+      status: "CONFIRMED",
       cartId: cart.id,
       lines,
       subtotalCents,

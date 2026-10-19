@@ -27,8 +27,15 @@ export interface OrderLine {
   lineTotalCents: number;
 }
 
+/**
+ * An order exists only after payment is approved and the commit succeeds, so it starts CONFIRMED.
+ * There are no later transitions yet (shipping, cancellation and refunds are out of scope).
+ */
+export type OrderStatus = "CONFIRMED";
+
 export interface Order {
   id: string;
+  status: OrderStatus;
   cartId: string;
   lines: OrderLine[];
   subtotalCents: number;

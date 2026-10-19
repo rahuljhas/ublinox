@@ -26,6 +26,7 @@ export interface CartView {
 
 export interface Order {
   id: string;
+  status: "CONFIRMED";
   cartId: string;
   lines: { productId: string; name: string; unitPriceCents: number; quantity: number; lineTotalCents: number }[];
   subtotalCents: number;
@@ -44,6 +45,25 @@ export interface Coupon {
   status: "AVAILABLE" | "REDEEMED";
   createdAt: string;
   redeemedByOrderId: string | null;
+}
+
+export interface OrderSummary {
+  id: string;
+  status: string;
+  cartId: string;
+  createdAt: string;
+  itemCount: number;
+  subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+  couponCode: string | null;
+}
+
+export interface OrderPage {
+  orders: OrderSummary[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface Report {
@@ -90,12 +110,20 @@ export const api = {
     call<CartView>("PUT", `/carts/${cartId}/items/${productId}`, { quantity }).then((r) => r.data),
   removeItem: (cartId: string, productId: string) =>
     call<CartView>("DELETE", `/carts/${cartId}/items/${productId}`).then((r) => r.data),
-  checkout: (cartId: string, idempotencyKey: string, couponCode?: string) =>
-    call<Order>("POST", `/carts/${cartId}/checkout`, couponCode ? { couponCode } : {}, { "Idempotency-Key": idempotencyKey }),
+  /** expectedSubtotalCents: the subtotal the customer saw. The server refuses with PRICE_CHANGED if it differs. */
+  checkout: (cartId: string, idempotencyKey: string, couponCode?: string, expectedSubtotalCents?: number) =>
+    call<Order>(
+      "POST",
+      `/carts/${cartId}/checkout`,
+      { ...(couponCode ? { couponCode } : {}), ...(expectedSubtotalCents !== undefined ? { expectedSubtotalCents } : {}) },
+      { "Idempotency-Key": idempotencyKey },
+    ),
+  getOrder: (id: string) => call<Order>("GET", `/orders/${id}`).then((r) => r.data),
   checkCoupon: (code: string) => call<Pick<Coupon, "code" | "percentOff" | "status">>("GET", `/coupons/${encodeURIComponent(code)}`).then((r) => r.data),
   admin: {
     report: () => call<Report>("GET", "/admin/report").then((r) => r.data),
     coupons: () => call<Coupon[]>("GET", "/admin/coupons").then((r) => r.data),
+    orders: (limit: number, offset: number) => call<OrderPage>("GET", `/admin/orders?limit=${limit}&offset=${offset}`).then((r) => r.data),
     generateCoupon: () => call<Coupon>("POST", "/admin/coupons").then((r) => r.data),
     updateProduct: (id: string, patch: { priceCents?: number; inventory?: number }) =>
       call<Product>("PATCH", `/admin/products/${id}`, patch).then((r) => r.data),

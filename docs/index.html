@@ -167,11 +167,11 @@
     <aside class="scorecard" aria-label="Status summary">
       <h3>Coverage across 39 spec items</h3>
       <div class="score-row">
-        <div class="score done"><strong>22</strong><span>Done</span></div>
-        <div class="score partial"><strong>15</strong><span>Partial</span></div>
+        <div class="score done"><strong>24</strong><span>Done</span></div>
+        <div class="score partial"><strong>13</strong><span>Partial</span></div>
         <div class="score out"><strong>2</strong><span>Not in scope</span></div>
       </div>
-      <div class="bar" aria-hidden="true"><i class="d" style="width:56.4%"></i><i class="p" style="width:38.5%"></i><i class="o" style="width:5.1%"></i></div>
+      <div class="bar" aria-hidden="true"><i class="d" style="width:61.5%"></i><i class="p" style="width:33.4%"></i><i class="o" style="width:5.1%"></i></div>
       <p>"Partial" means the assignment's scope is met but this spec asks for more (taxes, shipping, refunds, expiry, product deactivation). "Not in scope": payment callbacks and an order status lifecycle.</p>
     </aside>
   </div>
@@ -193,7 +193,7 @@
           <li>Apply a coupon at checkout</li>
           <li>Checkout, safe to retry</li>
           <li>View an order by id</li>
-          <li class="no">Order history list</li>
+          <li>Order history ("Your orders")</li>
         </ul>
       </div>
       <div class="card">
@@ -239,7 +239,7 @@
         <tr><td>Product</td><td class="spec">Create, update, deactivate, validate price and availability</td><td><span class="pill partial">Partial</span></td><td>6 products seeded from <code>products.json</code>; <code>PATCH /admin/products/{id}</code> updates price and stock with validation. No create or deactivate endpoint.</td><td class="ids">G1 U1–U4</td></tr>
         <tr><td>Cart</td><td class="spec">Add, edit quantity, delete items, validate products</td><td><span class="pill done">Done</span></td><td><code>POST /carts</code>, <code>PUT</code> / <code>DELETE /carts/{id}/items/{pid}</code>. Unknown product 404, bad quantity 400, above stock 409.</td><td class="ids">C1–C6 A1–A12 D1–D5</td></tr>
         <tr><td>Checkout</td><td class="spec">Validate cart, price, inventory and coupon before creating the order</td><td><span class="pill done">Done</span></td><td>All checks run under the cart, product and coupon locks, then payment, then one atomic commit.</td><td class="ids">K1–K24</td></tr>
-        <tr><td>Order</td><td class="spec">Unique orders, item snapshots, order history</td><td><span class="pill partial">Partial</span></td><td>UUID per order; each line stores name, unit price, quantity, line total. <code>GET /orders/{id}</code> only, no history list.</td><td class="ids">O1–O3</td></tr>
+        <tr><td>Order</td><td class="spec">Unique orders, item snapshots, order history</td><td><span class="pill done">Done</span></td><td>UUID per order with status <code>CONFIRMED</code>; each line stores name, unit price, quantity, line total. <code>GET /orders/{id}</code> and paginated <code>GET /admin/orders</code>, newest first.</td><td class="ids">O1–O3 H1–H6 E1</td></tr>
         <tr><td>Pricing</td><td class="spec">Gross, discount, net, taxes, shipping, final total</td><td><span class="pill partial">Partial</span></td><td>Subtotal, discount (half-up), total ≥ 0, all in cents. Taxes and shipping not modelled.</td><td class="ids">K19 K20</td></tr>
         <tr><td>Coupon</td><td class="spec">Create, validate, apply, expire, enforce usage limits</td><td><span class="pill partial">Partial</span></td><td>Generated per milestone, looked up case-insensitively, single use, redeemed atomically. No expiry.</td><td class="ids">M1–M8 Q1–Q4 K18</td></tr>
         <tr><td>Inventory</td><td class="spec">Reserve and release stock safely; prevent overselling</td><td><span class="pill done">Done</span></td><td>Stock is taken only at commit, after payment approval, so there is nothing to release on failure. Never oversold.</td><td class="ids">K16 X1–X14 S1</td></tr>
@@ -253,7 +253,7 @@
   <section id="errors">
     <div class="section-head">
       <div><span class="eyebrow">Section 3</span><h2><span class="num">3</span>Error handling</h2></div>
-      <p class="muted">Every error is <code>{ error: { code, message, details } }</code>. Clients branch on <code>code</code>.</p>
+      <p class="muted">Every error is <code>{ error: { code, message, details } }</code>. Clients branch on <code>code</code>. Full catalogue: <code>docs/ERRORS.md</code>.</p>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Error</th><th>Spec expects</th><th>Status</th><th>What the API returns</th><th>Tests</th></tr></thead>
@@ -283,7 +283,7 @@
         <tr><td>First succeeds, second fails</td><td class="spec">First order unchanged</td><td><span class="pill done">Done</span></td><td>The failed attempt writes nothing; the first order and its stock effect stay as they were.</td><td class="ids">K6 X6 X7</td></tr>
         <tr><td>Two orders, last item</td><td class="spec">Only one gets it</td><td><span class="pill done">Done</span></td><td>Stock is re-checked under the product lock; 50 shoppers for 3 units gives exactly 3 orders.</td><td class="ids">K16 X3</td></tr>
         <tr><td>Double-click checkout</td><td class="spec">No duplicate order</td><td><span class="pill done">Done</span></td><td>Same key: second click gets 409 while running, or the same order after.</td><td class="ids">K13 K17</td></tr>
-        <tr><td>Price changes during checkout</td><td class="spec">Revalidate and notify</td><td><span class="pill partial">Partial</span></td><td>The price change waits for the in-flight checkout; that order pays the price it validated. The cart always shows live prices. No push notification.</td><td class="ids">C4 X11</td></tr>
+        <tr><td>Price changes during checkout</td><td class="spec">Revalidate and notify</td><td><span class="pill done">Done</span></td><td>The page sends the subtotal it showed; if an admin changed a price, checkout returns <code>409 PRICE_CHANGED</code>, nothing is charged, and the cart reloads with the new price. A change during payment waits for the lock.</td><td class="ids">E7 E9 X11</td></tr>
         <tr><td>Same coupon, concurrently</td><td class="spec">Atomic redemption limit</td><td><span class="pill done">Done</span></td><td>Coupon lock: one discounted order, the other <code>409 COUPON_ALREADY_REDEEMED</code>.</td><td class="ids">K18 X13</td></tr>
         <tr><td>Duplicate payment callback</td><td class="spec">Process once</td><td><span class="pill out">Not in scope</span></td><td>Payment is a synchronous fake; there are no callbacks.</td><td class="ids">–</td></tr>
         <tr><td>Inventory released twice</td><td class="spec">No double increase</td><td><span class="pill done">Done</span></td><td>By design: stock is never reserved before commit, so there is nothing to release.</td><td class="ids">X9 K11</td></tr>
@@ -356,10 +356,10 @@
   <section id="testing">
     <div class="section-head">
       <div><span class="eyebrow">Verification</span><h2><span class="num">8</span>How to test it</h2></div>
-      <p class="muted">89 automated tests plus 37 live checks. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
+      <p class="muted">111 automated tests plus 37 live checks. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
     </div>
     <div class="cmds">
-      <pre><span class="c"># automated (89 tests, ~2 s)</span>
+      <pre><span class="c"># automated (111 tests, ~3 s)</span>
 cd backend
 npm test
 npx vitest run -t "X3"</pre>

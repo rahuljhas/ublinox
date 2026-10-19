@@ -202,6 +202,21 @@ Stock of the test product is 3. "Locks off" shows whether the test fails when th
 | X13 | Last unit and the only coupon contested together | one winner gets both; coupon points to that order | locks off |
 | X14 | After a sell-out | losers' carts show `inStock: false`; new adds 409 | locks off |
 
+### `GET /admin/orders` (`orderHistory.test.ts`)
+
+| ID | Case | Expected |
+|---|---|---|
+| H1 | Empty store | `{ orders: [], total: 0, limit: 20, offset: 0 }` |
+| H2 | Three orders, one with a coupon | newest first; summary has status, item count, subtotal, discount, total, coupon |
+| H3 | `limit` / `offset` | correct slices; beyond the end returns an empty page |
+| H4 | Declined, refused and replayed checkouts | never listed; replay does not add a row |
+| H5 | `limit=0`, `101`, `abc`; `offset=-1`, `1.5`; unknown parameter | 400 `VALIDATION_ERROR` |
+| H6 | Compared with the report | same count; totals sum to net revenue |
+
+### Edge-case assignment (`edgeCases.test.ts`)
+
+E1–E10 are described case by case in `docs/EDGE_CASES.md`: consecutive orders and statuses, double-click checkout, repeated add clicks, no refunds needed for race losers, partial stock (1 then 3 of 3), never-negative stock and payments, and admin price changes while the customer's page is open (`409 PRICE_CHANGED`).
+
 ### Invariant soak test
 
 | ID | Case | Expected |

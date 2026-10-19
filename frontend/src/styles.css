@@ -180,6 +180,15 @@ input { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid
 .stat.accent strong { color: var(--white); }
 .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .admin-grid .panel { position: static; }
+.span-2 { grid-column: 1 / -1; }
+.history { padding: 4px 18px; }
+.history-row { border-bottom: 1px solid var(--line); }
+.history-row:last-child { border-bottom: 0; }
+.history-head { width: 100%; display: grid; grid-template-columns: 110px 1fr 80px auto 100px 24px; gap: 12px; align-items: center; padding: 14px 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+.history-head strong { text-align: right; }
+.history-head .chev { font-weight: 800; color: var(--muted); text-align: center; }
+.history-detail { padding: 0 0 16px; display: grid; gap: 10px; max-width: 520px; }
+@media (max-width: 700px) { .history-head { grid-template-columns: 1fr auto 24px; } .history-head > :nth-child(2), .history-head > :nth-child(3), .history-head > :nth-child(4) { display: none; } }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th { text-align: left; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 4px; border-bottom: 1px solid var(--line); }
 td { padding: 8px 4px; border-bottom: 1px solid var(--line); }

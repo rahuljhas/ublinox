@@ -29,6 +29,8 @@ export const Errors = {
     new AppError(409, "INSUFFICIENT_INVENTORY", "Not enough stock for one or more items.", { lines }),
   couponAlreadyRedeemed: (code: string) =>
     new AppError(409, "COUPON_ALREADY_REDEEMED", `Coupon ${code} has already been used.`, { code }),
+  priceChanged: (details: Record<string, unknown>) =>
+    new AppError(409, "PRICE_CHANGED", "Prices changed since the cart was shown. Review the cart and check out again.", details),
   requestInProgress: () =>
     new AppError(409, "REQUEST_IN_PROGRESS", "A checkout with this Idempotency-Key is still running. Retry shortly."),
   noEligibleMilestone: (details: Record<string, unknown>) =>

@@ -6,6 +6,9 @@ Backend for a small store: carts, checkout that is safe to retry, inventory that
 - `frontend/`: Vite + React + TypeScript. Shop, cart, checkout with coupon, receipt, and an admin panel.
 - `docs/checkout-sequence.png`: sequence diagram of the checkout flow.
 - `task.md`: the assignment brief.
+- `docs/EDGE_CASES.md`: every edge case, what each customer sees, and its test.
+- `docs/ERRORS.md`: every error code, when it happens, and what the client should do.
+- `docs/TEST_PLAN.md`, `docs/REQUIREMENTS.md`, `docs/index.html`: test plan, requirements checklist, and an HTML spec page.
 
 ## Run it
 
@@ -23,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Run the backend tests (89 automated tests), and the live edge-case run against a started server (37 checks):
+Run the backend tests (111 automated tests), and the live edge-case run against a started server (37 checks):
 
 ```bash
 cd backend
@@ -44,7 +47,7 @@ Data resets on every restart (in-memory store).
 
 ## API
 
-All bodies are JSON. Money is always an integer number of cents (`priceCents`, `totalCents`, …).
+All bodies are JSON. Money is always an integer number of cents (`priceCents`, `totalCents`, …). Full error catalogue: `docs/ERRORS.md`.
 
 ### Errors
 
@@ -63,7 +66,7 @@ Every error has the same shape, and `code` is stable for clients to branch on:
 | `GET /carts/{cartId}` | – | 200 cart with current prices, line totals, subtotal, stock warnings | 404 `CART_NOT_FOUND` |
 | `PUT /carts/{cartId}/items/{productId}` | `{ "quantity": 1-99 }` | 200 cart (adds the item or sets its quantity) | 400 `VALIDATION_ERROR`, 404 `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT` |
 | `DELETE /carts/{cartId}/items/{productId}` | – | 200 cart | 404 `ITEM_NOT_IN_CART`, 409 `CART_ALREADY_CHECKED_OUT` |
-| `POST /carts/{cartId}/checkout` | `{ "couponCode"?: string }` + header `Idempotency-Key` (8–100 chars) | 201 order. A retry with the same key returns the same order with header `Idempotent-Replayed: true` | 400 `IDEMPOTENCY_KEY_REQUIRED`, 402 `PAYMENT_DECLINED`, 404 `COUPON_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT`, 409 `COUPON_ALREADY_REDEEMED`, 409 `REQUEST_IN_PROGRESS`, 422 `CART_EMPTY`, 422 `IDEMPOTENCY_KEY_REUSED` |
+| `POST /carts/{cartId}/checkout` | `{ "couponCode"?: string, "expectedSubtotalCents"?: int }` + header `Idempotency-Key` (8–100 chars) | 201 order. A retry with the same key returns the same order with header `Idempotent-Replayed: true` | 400 `IDEMPOTENCY_KEY_REQUIRED`, 402 `PAYMENT_DECLINED`, 404 `COUPON_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT`, 409 `COUPON_ALREADY_REDEEMED`, 409 `PRICE_CHANGED`, 409 `REQUEST_IN_PROGRESS`, 422 `CART_EMPTY`, 422 `IDEMPOTENCY_KEY_REUSED` |
 | `GET /orders/{orderId}` | – | 200 order with line snapshot (name, unit price, quantity), subtotal, discount, total, coupon | 404 `ORDER_NOT_FOUND` |
 | `GET /coupons/{code}` | – | 200 `{ code, percentOff, status }` | 404 `COUPON_NOT_FOUND` |
 
@@ -73,6 +76,7 @@ Every error has the same shape, and `code` is stable for clients to branch on:
 |---|---|---|---|
 | `POST /admin/coupons` | – | 201 coupon for the earliest unrewarded milestone | 409 `NO_ELIGIBLE_MILESTONE` (details include `nextMilestoneAtOrder`) |
 | `GET /admin/coupons` | – | 200 all coupons with status | – |
+| `GET /admin/orders?limit=&offset=` | – | 200 `{ orders, total, limit, offset }`, newest first (`limit` 1–100, default 20) | 400 `VALIDATION_ERROR` |
 | `GET /admin/report` | – | 200 orders placed, quantity sold per product, gross revenue, discounts, net revenue, coupons generated / available / redeemed | – |
 | `PATCH /admin/products/{productId}` | `{ "priceCents"?: int, "inventory"?: int }` | 200 product | 400 `VALIDATION_ERROR`, 404 `PRODUCT_NOT_FOUND` |
 

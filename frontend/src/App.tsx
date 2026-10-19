@@ -3,6 +3,7 @@ import { Admin } from "./Admin";
 import { ApiError, api, type CartView, type Product, type Report } from "./api";
 import { CartPanel } from "./CartPanel";
 import { Logo } from "./Logo";
+import { MyOrders } from "./OrderHistory";
 import { Shop } from "./Shop";
 
 type Tab = "shop" | "admin";
@@ -17,6 +18,8 @@ export function App() {
   const [report, setReport] = useState<Report | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: "ok" | "error" } | null>(null);
   const [offline, setOffline] = useState(false);
+  const [cartBusy, setCartBusy] = useState(false);
+  const [ordersVersion, setOrdersVersion] = useState(0);
 
   const notify: Notify = useCallback((message, tone = "ok") => {
     setToast({ message, tone });
@@ -46,16 +49,32 @@ export function App() {
     })();
   }, [refreshProducts, refreshReport, startNewCart]);
 
+  // One cart update at a time: the Add buttons are disabled until the previous update returns,
+  // so three quick clicks become quantities 1, 2, 3 instead of three requests that all say 1.
   const updateCart = useCallback(
     async (action: () => Promise<CartView>) => {
+      setCartBusy(true);
       try {
         setCart(await action());
       } catch (e) {
         notify(e instanceof ApiError ? `${e.code}: ${e.message}` : "Request failed", "error");
+      } finally {
+        setCartBusy(false);
       }
     },
     [notify],
   );
+
+  // Coming back to the tab: reload prices and stock so the page does not show stale values.
+  useEffect(() => {
+    const onFocus = () => {
+      void refreshProducts().catch(() => undefined);
+      const id = localStorage.getItem(CART_KEY);
+      if (id) void api.getCart(id).then((c) => c.status === "OPEN" && setCart(c)).catch(() => undefined);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshProducts]);
 
   const goTo = (target: Tab, anchor?: string) => {
     setTab(target);
@@ -104,6 +123,7 @@ export function App() {
               <Shop
                 products={products}
                 cart={cart}
+                busy={cartBusy}
                 onAdd={(productId, quantity) => cart && updateCart(() => api.setQuantity(cart.id, productId, quantity))}
               />
               <div id="cart">
@@ -113,12 +133,14 @@ export function App() {
                   onChange={updateCart}
                   onCheckedOut={async () => {
                     await Promise.all([refreshProducts(), refreshReport()]);
+                    setOrdersVersion((v) => v + 1);
                   }}
                   onNewCart={startNewCart}
                 />
               </div>
             </div>
           </section>
+          <MyOrders refreshKey={ordersVersion} />
         </>
       ) : (
         <section className="section">

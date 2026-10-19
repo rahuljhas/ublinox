@@ -5,11 +5,23 @@ import { AppError, Errors } from "../domain/errors.js";
 import { createCart, removeItem, setItemQuantity, viewCart } from "../services/cartService.js";
 import { checkout, getOrder } from "../services/checkoutService.js";
 import { generateCoupon, getCoupon, listCoupons } from "../services/couponService.js";
+import { listOrders } from "../services/orderHistoryService.js";
 import { listProducts, updateProduct } from "../services/productService.js";
 import { buildReport } from "../services/reportService.js";
 
 const quantityBody = z.object({ quantity: z.number().int().min(1).max(99) }).strict();
-const checkoutBody = z.object({ couponCode: z.string().trim().min(1).max(40).optional() }).strict();
+const historyQuery = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    offset: z.coerce.number().int().min(0).default(0),
+  })
+  .strict();
+const checkoutBody = z
+  .object({
+    couponCode: z.string().trim().min(1).max(40).optional(),
+    expectedSubtotalCents: z.number().int().min(0).optional(),
+  })
+  .strict();
 // Letters, digits and . _ : - only. Rejects two headers joined by a comma into one ambiguous key.
 const idempotencyKey = z.string().min(8).max(100).regex(/^[A-Za-z0-9._:-]+$/);
 const productPatch = z
@@ -20,7 +32,7 @@ const productPatch = z
   .strict()
   .refine((patch) => patch.priceCents !== undefined || patch.inventory !== undefined, "Send priceCents and/or inventory");
 
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
+function parse<S extends z.ZodTypeAny>(schema: S, value: unknown): z.infer<S> {
   const result = schema.safeParse(value ?? {});
   if (!result.success) throw Errors.validation({ issues: result.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) });
   return result.data;
@@ -61,7 +73,12 @@ export function createApp(ctx: Context) {
     const key = idempotencyKey.safeParse(req.header("Idempotency-Key"));
     if (!key.success) throw Errors.idempotencyKeyRequired();
     const body = parse(checkoutBody, req.body);
-    const result = await checkout(ctx, { cartId: req.params.cartId, idempotencyKey: key.data, couponCode: body.couponCode });
+    const result = await checkout(ctx, {
+      cartId: req.params.cartId,
+      idempotencyKey: key.data,
+      couponCode: body.couponCode,
+      expectedSubtotalCents: body.expectedSubtotalCents,
+    });
     res.header("Idempotent-Replayed", String(result.replayed)).status(result.status).json(result.body);
   });
   app.get("/orders/:orderId", (req, res) => void res.json(getOrder(ctx, req.params.orderId)));
@@ -74,6 +91,7 @@ export function createApp(ctx: Context) {
   app.post("/admin/coupons", (_req, res) => void res.status(201).json(generateCoupon(ctx)));
   app.get("/admin/coupons", (_req, res) => void res.json(listCoupons(ctx)));
   app.get("/admin/report", (_req, res) => void res.json(buildReport(ctx)));
+  app.get("/admin/orders", (req, res) => void res.json(listOrders(ctx, parse(historyQuery, req.query))));
   app.patch("/admin/products/:productId", async (req, res) => {
     res.json(await updateProduct(ctx, req.params.productId, parse(productPatch, req.body)));
   });

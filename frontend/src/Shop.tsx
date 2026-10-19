@@ -1,6 +1,6 @@
 import { money, type CartView, type Product } from "./api";
 
-export function Shop(props: { products: Product[]; cart: CartView | null; onAdd: (productId: string, quantity: number) => void }) {
+export function Shop(props: { products: Product[]; cart: CartView | null; busy: boolean; onAdd: (productId: string, quantity: number) => void }) {
   const inCart = (id: string) => props.cart?.items.find((item) => item.productId === id)?.quantity ?? 0;
 
   return (
@@ -33,7 +33,7 @@ export function Shop(props: { products: Product[]; cart: CartView | null; onAdd:
                 </div>
                 <button
                   className="btn primary"
-                  disabled={soldOut || !props.cart || qty >= product.inventory}
+                  disabled={soldOut || !props.cart || props.busy || qty >= product.inventory}
                   onClick={() => props.onAdd(product.id, qty + 1)}
                 >
                   {qty > 0 ? `Add another (${qty} in cart)` : "Add to cart"}

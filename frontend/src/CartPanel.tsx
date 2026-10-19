@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { Notify } from "./App";
 import { ApiError, api, money, type CartView, type Order } from "./api";
+import { rememberOrder } from "./OrderHistory";
 
 interface LastAttempt {
   cartId: string;
   key: string;
   couponCode?: string;
+  expectedSubtotalCents?: number;
 }
 
 export function CartPanel(props: {
@@ -36,8 +38,9 @@ export function CartPanel(props: {
   async function send(attempt: LastAttempt, isRetry: boolean) {
     setBusy(true);
     try {
-      const { data, replayed } = await api.checkout(attempt.cartId, attempt.key, attempt.couponCode);
+      const { data, replayed } = await api.checkout(attempt.cartId, attempt.key, attempt.couponCode, attempt.expectedSubtotalCents);
       setOrder(data);
+      rememberOrder(data.id);
       setReplayNote(
         replayed
           ? `Replayed: the server returned the same order #${data.id.slice(0, 8)}. No new order, no stock charged twice.`
@@ -46,7 +49,14 @@ export function CartPanel(props: {
       if (!isRetry) props.notify(`Order #${data.id.slice(0, 8)} placed`);
       await props.onCheckedOut();
     } catch (e) {
-      props.notify(e instanceof ApiError ? `${e.code}: ${e.message}` : "Checkout failed", "error");
+      if (e instanceof ApiError && e.code === "PRICE_CHANGED") {
+        // An admin changed a price after this page loaded: show the new prices and let the customer confirm.
+        props.onChange(() => api.getCart(attempt.cartId));
+        await props.onCheckedOut();
+        props.notify("Prices changed since you opened the page. Review the new total and check out again.", "error");
+      } else {
+        props.notify(e instanceof ApiError ? `${e.code}: ${e.message}` : "Checkout failed", "error");
+      }
     } finally {
       setBusy(false);
     }
@@ -55,7 +65,12 @@ export function CartPanel(props: {
   function checkout() {
     if (!cart) return;
     // A new key per checkout attempt. Retrying reuses it, so the server can recognise the duplicate.
-    const attempt = { cartId: cart.id, key: crypto.randomUUID(), couponCode: coupon.trim() || undefined };
+    const attempt = {
+      cartId: cart.id,
+      key: crypto.randomUUID(),
+      couponCode: coupon.trim() || undefined,
+      expectedSubtotalCents: cart.subtotalCents,
+    };
     setLastAttempt(attempt);
     void send(attempt, false);
   }

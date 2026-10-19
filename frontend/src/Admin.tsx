@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Notify } from "./App";
 import { ApiError, api, money, type Coupon, type Product, type Report } from "./api";
+import { AdminOrderHistory } from "./OrderHistory";
 
 export function Admin(props: { products: Product[]; notify: Notify; onProductsChanged: () => Promise<void> }) {
   const [report, setReport] = useState<Report | null>(null);
@@ -203,6 +204,10 @@ export function Admin(props: { products: Product[]; notify: Notify; onProductsCh
             </tbody>
           </table>
         </section>
+
+        <div className="span-2">
+          <AdminOrderHistory refreshKey={coupons.length + (report?.ordersPlaced ?? 0)} />
+        </div>
 
         <section className="card panel">
           <h3>Concurrency demo</h3>
