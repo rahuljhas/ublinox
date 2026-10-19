@@ -10,6 +10,17 @@ Backend for a small store: carts, checkout that is safe to retry, inventory that
 - `docs/ERRORS.md`: every error code, when it happens, and what the client should do.
 - `docs/TEST_PLAN.md`, `docs/REQUIREMENTS.md`, `docs/index.html`: test plan, requirements checklist, and an HTML spec page.
 
+## Live demo
+
+| Part | URL | Host |
+|---|---|---|
+| Store (frontend) | https://ublinox.vercel.app | Vercel |
+| API (backend) | https://ublinox-api.onrender.com (try `/health`, `/products`) | Render, free plan, Singapore, 1 instance |
+
+Notes: the API keeps data in memory, so every redeploy or restart resets it to the seed. The free plan sleeps after ~15 minutes idle; the first request then takes 30–60 seconds.
+
+Redeploy: the API redeploys automatically on every push to `main` (`render.yaml`). The frontend deploys with `cd frontend && vercel deploy --prod` (`VITE_API_URL` is set in the Vercel project).
+
 ## Run it
 
 Requires Node.js 20 or later.
