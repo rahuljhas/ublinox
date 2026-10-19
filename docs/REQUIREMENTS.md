@@ -26,9 +26,9 @@ Every requirement in `task.md`, where it is enforced, and the test that proves i
 | 18 | Report: 6 figures, reconciles, read-only | ✅ | `reportService.ts` | R1–R4 |
 | 19 | API documented; admin operations identified | ✅ | `README.md`, `/admin/*` | – |
 | 20 | In-memory store still safe under overlap | ✅ | `keyedMutex.ts` | 5 tests fail with locks off |
-| 21 | Multi-instance / production DB explained | ✅ | `DECISIONS.md` §8 | – |
+| 21 | Multi-instance / production DB explained | ✅ | `DECISIONS.md` §13 | – |
 | 22 | Tests include competing or repeated operations | ✅ | 140 tests + 37 live checks + load test | `npm test`, `npm run edge-cases` |
-| 23 | **DECISIONS.md** (heavily weighted) | ✅ | `DECISIONS.md`: 10 sections, 12 decisions | – |
+| 23 | **DECISIONS.md** (heavily weighted) | ✅ | `DECISIONS.md`: 15 sections, 14 decisions | – |
 | 24 | Meaningful commit history | ✅ | 25+ commits | – |
 | 25 | Approximate time spent stated | ❌ | – | – |
 
@@ -37,6 +37,6 @@ Every requirement in `task.md`, where it is enforced, and the test that proves i
 | Issue | Impact | Fix |
 |---|---|---|
 | Customer page reads `GET /admin/report` | Blurs customer / admin boundary | Add public `GET /rewards/progress` |
-| Hot-product throughput ≈ 1 / payment latency (locks held during payment) | Slow queue for one popular item | Bounded by `LOCK_WAIT_MS` (503). Next step: reserve stock, pay outside the lock (DECISIONS §10) |
+| Hot-product throughput ≈ 1 / payment latency (locks held during payment) | Slow queue for one popular item | Bounded by `LOCK_WAIT_MS` (503). Next step: reserve stock, pay outside the lock (DECISIONS §15) |
 | One instance only | Cannot scale out | Defer: PostgreSQL row locks + unique key constraint (document) |
 | Old SQLite diagram files on disk | Confusing leftovers | Delete `docs/architecture.png`, `docs/diagram.py` |
