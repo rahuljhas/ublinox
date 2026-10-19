@@ -193,7 +193,7 @@
           <li>Apply a coupon at checkout</li>
           <li>Checkout, safe to retry</li>
           <li>View an order by id</li>
-          <li>Order history ("Your orders")</li>
+          <li>Own order history (3 demo customers)</li>
         </ul>
       </div>
       <div class="card">
@@ -356,10 +356,10 @@
   <section id="testing">
     <div class="section-head">
       <div><span class="eyebrow">Verification</span><h2><span class="num">8</span>How to test it</h2></div>
-      <p class="muted">124 automated tests, 37 live checks and a load test. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
+      <p class="muted">140 automated tests, 37 live checks and a load test. Race tests fail when the locks are disabled, so they prove the locks matter.</p>
     </div>
     <div class="cmds">
-      <pre><span class="c"># automated (124 tests, ~4 s)</span>
+      <pre><span class="c"># automated (140 tests, ~4 s)</span>
 cd backend
 npm test
 npx vitest run -t "X3"</pre>

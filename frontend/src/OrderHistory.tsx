@@ -1,51 +1,35 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, money, type Order, type OrderPage } from "./api";
+import { customerName } from "./users";
 
-const MY_ORDERS_KEY = "ublinox.myOrders";
 const PAGE_SIZE = 10;
-
-/** No login in this demo, so "my orders" are the order ids this browser placed. */
-export function rememberOrder(orderId: string) {
-  try {
-    const ids: string[] = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) ?? "[]");
-    if (!ids.includes(orderId)) localStorage.setItem(MY_ORDERS_KEY, JSON.stringify([orderId, ...ids].slice(0, 50)));
-  } catch {
-    /* storage unavailable: history is a convenience only */
-  }
-}
-
-function myOrderIds(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(MY_ORDERS_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-/** Customer view: orders placed from this browser, fetched one by one with GET /orders/{id}. */
-export function MyOrders({ refreshKey }: { refreshKey: number }) {
+/** Customer view: this customer's orders from GET /orders?customerId=, newest first. */
+export function MyOrders({ customerId, name, refreshKey }: { customerId: string; name: string; refreshKey: number }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
-    // Orders that no longer exist (server restarted) are skipped.
-    Promise.all(myOrderIds().map((id) => api.getOrder(id).catch(() => null))).then((list) =>
-      setOrders(list.filter((o): o is Order => o !== null)),
-    );
-  }, [refreshKey]);
-
-  if (orders.length === 0) return null;
+    let current = true; // ignore a slow answer if the customer was switched meanwhile
+    setOrders([]);
+    setOpen(null);
+    api.customerOrders(customerId).then((page) => current && setOrders(page.orders)).catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [customerId, refreshKey]);
 
   return (
     <section className="section" id="my-orders">
       <div className="section-intro">
         <span className="eyebrow">Order history</span>
-        <h2>Your orders</h2>
-        <p className="muted">Orders placed from this browser. Each keeps the prices you paid, even if they change later.</p>
+        <h2>Orders for {name}</h2>
+        <p className="muted">Each order keeps the prices that were paid, even if they change later.</p>
       </div>
       <div className="card history">
+        {orders.length === 0 && <p className="empty-history muted">No orders yet for {name}. Add something to the cart and check out.</p>}
         {orders.map((order) => (
           <div key={order.id} className="history-row">
             <button className="history-head" onClick={() => setOpen(open === order.id ? null : order.id)} aria-expanded={open === order.id}>
@@ -106,11 +90,13 @@ export function AdminOrderHistory({ refreshKey }: { refreshKey: number }) {
           {from}–{to} of {page?.total ?? 0}
         </span>
       </div>
+      <div className="table-scroll">
       <table>
         <thead>
           <tr>
             <th>Order</th>
             <th>Placed</th>
+            <th>Customer</th>
             <th className="num">Items</th>
             <th>Coupon</th>
             <th className="num">Subtotal</th>
@@ -121,7 +107,7 @@ export function AdminOrderHistory({ refreshKey }: { refreshKey: number }) {
         <tbody>
           {page?.orders.length === 0 && (
             <tr>
-              <td colSpan={7} className="muted">
+              <td colSpan={8} className="muted">
                 No orders yet.
               </td>
             </tr>
@@ -130,6 +116,7 @@ export function AdminOrderHistory({ refreshKey }: { refreshKey: number }) {
             <tr key={o.id}>
               <td className="mono">#{o.id.slice(0, 8)}</td>
               <td>{when(o.createdAt)}</td>
+              <td>{customerName(o.customerId)}</td>
               <td className="num">{o.itemCount}</td>
               <td className="mono">{o.couponCode ?? "–"}</td>
               <td className="num">{money(o.subtotalCents)}</td>
@@ -141,6 +128,7 @@ export function AdminOrderHistory({ refreshKey }: { refreshKey: number }) {
           ))}
         </tbody>
       </table>
+      </div>
       <div className="row">
         <button className="btn ghost small" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
           ← Newer

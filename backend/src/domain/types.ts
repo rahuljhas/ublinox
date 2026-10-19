@@ -15,6 +15,8 @@ export interface Cart {
   /** productId -> quantity. Prices are not stored: a cart always shows current prices. */
   items: Map<string, number>;
   orderId: string | null;
+  /** Who the cart belongs to. There is no login: the client declares it (demo customers). */
+  customerId: string | null;
   createdAt: string;
 }
 
@@ -37,6 +39,7 @@ export interface Order {
   id: string;
   status: OrderStatus;
   cartId: string;
+  customerId: string | null;
   lines: OrderLine[];
   subtotalCents: number;
   discountCents: number;

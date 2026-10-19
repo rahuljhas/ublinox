@@ -5,11 +5,21 @@ import { AppError, Errors } from "../domain/errors.js";
 import { createCart, removeItem, setItemQuantity, viewCart } from "../services/cartService.js";
 import { checkout, getOrder } from "../services/checkoutService.js";
 import { generateCoupon, getCoupon, listCoupons } from "../services/couponService.js";
-import { listOrders } from "../services/orderHistoryService.js";
+import { listCustomerOrders, listOrders } from "../services/orderHistoryService.js";
 import { listProducts, updateProduct } from "../services/productService.js";
 import { buildReport } from "../services/reportService.js";
 
 const quantityBody = z.object({ quantity: z.number().int().min(1).max(99) }).strict();
+// Lower-case letters, digits and dashes, e.g. "u-aisha". Declared by the client; there is no authentication.
+const customerId = z.string().regex(/^[a-z0-9-]{1,40}$/);
+const createCartBody = z.object({ customerId: customerId.optional() }).strict();
+const customerOrdersQuery = z
+  .object({
+    customerId,
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    offset: z.coerce.number().int().min(0).default(0),
+  })
+  .strict();
 const historyQuery = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -58,7 +68,7 @@ export function createApp(ctx: Context) {
   app.get("/products", (_req, res) => void res.json(listProducts(ctx)));
 
   // ---------- carts ----------
-  app.post("/carts", (_req, res) => void res.status(201).json(createCart(ctx)));
+  app.post("/carts", (req, res) => void res.status(201).json(createCart(ctx, parse(createCartBody, req.body).customerId ?? null)));
   app.get("/carts/:cartId", (req, res) => void res.json(viewCart(ctx, req.params.cartId)));
   app.put("/carts/:cartId/items/:productId", async (req, res) => {
     const { quantity } = parse(quantityBody, req.body);
@@ -80,6 +90,10 @@ export function createApp(ctx: Context) {
       expectedSubtotalCents: body.expectedSubtotalCents,
     });
     res.header("Idempotent-Replayed", String(result.replayed)).status(result.status).json(result.body);
+  });
+  app.get("/orders", (req, res) => {
+    const q = parse(customerOrdersQuery, req.query);
+    res.json(listCustomerOrders(ctx, q.customerId, q));
   });
   app.get("/orders/:orderId", (req, res) => void res.json(getOrder(ctx, req.params.orderId)));
   app.get("/coupons/:code", (req, res) => {

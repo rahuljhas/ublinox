@@ -1,15 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Admin } from "./Admin";
 import { ApiError, api, type CartView, type Product, type Report } from "./api";
 import { CartPanel } from "./CartPanel";
 import { Logo } from "./Logo";
 import { MyOrders } from "./OrderHistory";
 import { Shop } from "./Shop";
+import { CUSTOMERS, customerById } from "./users";
+import { UserSwitcher } from "./UserSwitcher";
 
 type Tab = "shop" | "admin";
 export type Notify = (message: string, tone?: "ok" | "error") => void;
 
-const CART_KEY = "ublinox.cartId";
+const USER_KEY = "ublinox.user";
+/** Each customer keeps their own open cart. */
+const cartKey = (userId: string) => `ublinox.cartId.${userId}`;
+
+function savedUser(): string {
+  try {
+    const id = localStorage.getItem(USER_KEY);
+    return customerById(id) ? id! : CUSTOMERS[0].id;
+  } catch {
+    return CUSTOMERS[0].id;
+  }
+}
 
 export function App() {
   const [tab, setTab] = useState<Tab>("shop");
@@ -20,6 +33,10 @@ export function App() {
   const [offline, setOffline] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const [ordersVersion, setOrdersVersion] = useState(0);
+  const [userId, setUserId] = useState(savedUser);
+  // The customer who is shopping right now. Async results for a customer who was switched away from are dropped.
+  const userRef = useRef(userId);
+  const customer = customerById(userId) ?? CUSTOMERS[0];
 
   const notify: Notify = useCallback((message, tone = "ok") => {
     setToast({ message, tone });
@@ -29,33 +46,67 @@ export function App() {
   const refreshProducts = useCallback(() => api.products().then(setProducts), []);
   const refreshReport = useCallback(() => api.admin.report().then(setReport).catch(() => undefined), []);
 
-  const startNewCart = useCallback(async () => {
-    const fresh = await api.createCart();
-    localStorage.setItem(CART_KEY, fresh.id);
-    setCart(fresh);
+  const startNewCart = useCallback(async (forUser: string) => {
+    const fresh = await api.createCart(forUser);
+    try {
+      localStorage.setItem(cartKey(forUser), fresh.id);
+    } catch {
+      /* storage unavailable: the cart still works for this page view */
+    }
+    if (userRef.current === forUser) setCart(fresh);
   }, []);
 
-  useEffect(() => {
-    (async () => {
+  // Open the customer's saved cart if it is still open and theirs, otherwise start a new one.
+  const loadCartFor = useCallback(
+    async (forUser: string) => {
+      let saved: string | null = null;
       try {
-        await Promise.all([refreshProducts(), refreshReport()]);
-        const saved = localStorage.getItem(CART_KEY);
-        const existing = saved ? await api.getCart(saved).catch(() => null) : null;
-        if (existing && existing.status === "OPEN") setCart(existing);
-        else await startNewCart();
+        saved = localStorage.getItem(cartKey(forUser));
       } catch {
-        setOffline(true);
+        /* ignore */
       }
-    })();
-  }, [refreshProducts, refreshReport, startNewCart]);
+      const existing = saved ? await api.getCart(saved).catch(() => null) : null;
+      if (existing && existing.status === "OPEN" && existing.customerId === forUser) {
+        if (userRef.current === forUser) setCart(existing);
+      } else {
+        await startNewCart(forUser);
+      }
+    },
+    [startNewCart],
+  );
+
+  useEffect(() => {
+    Promise.all([refreshProducts(), refreshReport()]).catch(() => setOffline(true));
+  }, [refreshProducts, refreshReport]);
+
+  // Runs on first load and every time the customer is switched.
+  useEffect(() => {
+    userRef.current = userId;
+    setCart(null);
+    loadCartFor(userId).catch(() => setOffline(true));
+  }, [userId, loadCartFor]);
+
+  const switchUser = (id: string) => {
+    if (id === userRef.current) return;
+    try {
+      localStorage.setItem(USER_KEY, id);
+    } catch {
+      /* ignore */
+    }
+    userRef.current = id;
+    setUserId(id);
+    notify(`Now shopping as ${customerById(id)?.name ?? id}`);
+  };
 
   // One cart update at a time: the Add buttons are disabled until the previous update returns,
   // so three quick clicks become quantities 1, 2, 3 instead of three requests that all say 1.
   const updateCart = useCallback(
     async (action: () => Promise<CartView>) => {
+      const forUser = userRef.current;
       setCartBusy(true);
       try {
-        setCart(await action());
+        const updated = await action();
+        if (userRef.current === forUser) setCart(updated);
       } catch (e) {
         notify(e instanceof ApiError ? `${e.code}: ${e.message}` : "Request failed", "error");
       } finally {
@@ -69,8 +120,14 @@ export function App() {
   useEffect(() => {
     const onFocus = () => {
       void refreshProducts().catch(() => undefined);
-      const id = localStorage.getItem(CART_KEY);
-      if (id) void api.getCart(id).then((c) => c.status === "OPEN" && setCart(c)).catch(() => undefined);
+      const forUser = userRef.current;
+      let id: string | null = null;
+      try {
+        id = localStorage.getItem(cartKey(forUser));
+      } catch {
+        /* ignore */
+      }
+      if (id) void api.getCart(id).then((c) => c.status === "OPEN" && userRef.current === forUser && setCart(c)).catch(() => undefined);
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
@@ -97,6 +154,7 @@ export function App() {
               Admin
             </button>
           </div>
+          <UserSwitcher current={customer} onSelect={switchUser} />
           <button className="cart-chip" onClick={() => goTo("shop", "cart")} aria-label="Go to cart">
             Cart <span className="badge">{cart?.itemCount ?? 0}</span>
           </button>
@@ -128,19 +186,21 @@ export function App() {
               />
               <div id="cart">
                 <CartPanel
+                  key={userId}
                   cart={cart}
+                  shopper={customer.name.split(" ")[0]}
                   notify={notify}
                   onChange={updateCart}
                   onCheckedOut={async () => {
                     await Promise.all([refreshProducts(), refreshReport()]);
                     setOrdersVersion((v) => v + 1);
                   }}
-                  onNewCart={startNewCart}
+                  onNewCart={() => startNewCart(userId)}
                 />
               </div>
             </div>
           </section>
-          <MyOrders refreshKey={ordersVersion} />
+          <MyOrders customerId={userId} name={customer.name} refreshKey={ordersVersion} />
         </>
       ) : (
         <section className="section">

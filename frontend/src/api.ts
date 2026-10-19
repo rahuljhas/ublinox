@@ -10,6 +10,7 @@ export interface CartView {
   id: string;
   status: "OPEN" | "CHECKED_OUT";
   orderId: string | null;
+  customerId: string | null;
   items: {
     productId: string;
     name: string;
@@ -28,6 +29,7 @@ export interface Order {
   id: string;
   status: "CONFIRMED";
   cartId: string;
+  customerId: string | null;
   lines: { productId: string; name: string; unitPriceCents: number; quantity: number; lineTotalCents: number }[];
   subtotalCents: number;
   discountCents: number;
@@ -51,6 +53,7 @@ export interface OrderSummary {
   id: string;
   status: string;
   cartId: string;
+  customerId: string | null;
   createdAt: string;
   itemCount: number;
   subtotalCents: number;
@@ -61,6 +64,13 @@ export interface OrderSummary {
 
 export interface OrderPage {
   orders: OrderSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CustomerOrderPage {
+  orders: Order[];
   total: number;
   limit: number;
   offset: number;
@@ -107,7 +117,9 @@ async function call<T>(method: string, path: string, body?: unknown, headers: Re
 
 export const api = {
   products: () => call<Product[]>("GET", "/products").then((r) => r.data),
-  createCart: () => call<CartView>("POST", "/carts").then((r) => r.data),
+  createCart: (customerId?: string) => call<CartView>("POST", "/carts", customerId ? { customerId } : {}).then((r) => r.data),
+  customerOrders: (customerId: string, limit = 50, offset = 0) =>
+    call<CustomerOrderPage>("GET", `/orders?customerId=${encodeURIComponent(customerId)}&limit=${limit}&offset=${offset}`).then((r) => r.data),
   getCart: (id: string) => call<CartView>("GET", `/carts/${id}`).then((r) => r.data),
   setQuantity: (cartId: string, productId: string, quantity: number) =>
     call<CartView>("PUT", `/carts/${cartId}/items/${productId}`, { quantity }).then((r) => r.data),

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { Notify } from "./App";
 import { ApiError, api, money, type CartView, type Order } from "./api";
-import { rememberOrder } from "./OrderHistory";
 
 interface Attempt {
   cartId: string;
@@ -14,6 +13,7 @@ const NETWORK_RETRIES = 2;
 
 export function CartPanel(props: {
   cart: CartView | null;
+  shopper: string;
   notify: Notify;
   onChange: (action: () => Promise<CartView>) => void;
   onCheckedOut: () => Promise<void>;
@@ -72,7 +72,6 @@ export function CartPanel(props: {
     try {
       const placed = await send(attempt);
       setOrder(placed);
-      rememberOrder(placed.id);
       props.notify(`Order #${placed.id.slice(0, 8)} placed`);
       setCoupon("");
       setCouponInfo(null);
@@ -132,7 +131,9 @@ export function CartPanel(props: {
     <aside className="card panel">
       <div className="section-head">
         <h3 className="panel-title">Your cart</h3>
-        <span className="muted">{cart?.itemCount ?? 0} items</span>
+        <span className="muted">
+          {props.shopper} · {cart?.itemCount ?? 0} items
+        </span>
       </div>
 
       {!cart || cart.items.length === 0 ? (

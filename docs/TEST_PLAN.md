@@ -217,6 +217,21 @@ Stock of the test product is 3. "Locks off" shows whether the test fails when th
 
 E1–E10 are described case by case in `docs/EDGE_CASES.md`: consecutive orders and statuses, double-click checkout, repeated add clicks, no refunds needed for race losers, partial stock (1 then 3 of 3), never-negative stock and payments, and admin price changes while the customer's page is open (`409 PRICE_CHANGED`).
 
+### Demo customers (`customers.test.ts`)
+
+| ID | Case | Expected |
+|---|---|---|
+| CU1 | Cart created with `customerId`, then checked out | cart and order carry the customer; no customer means `null` |
+| CU2 | `customerId` upper case, with spaces, empty, 41 chars, a number, or an extra body field | 400 `VALIDATION_ERROR`, no cart created |
+| CU3 | `GET /orders?customerId=` for three customers | only that customer's orders, newest first, with lines; unknown customer gets an empty page |
+| CU4 | Missing or malformed `customerId`, `limit=0`, unknown parameter | 400 `VALIDATION_ERROR` |
+| CU5 | Two customers hold the last unit and check out together | one 201 and one 409; the winner's history has 1 order, the loser's 0; one charge |
+| CU6 | One customer buys the last stock | the other customer's cart stays open, shows `inStock: false`, and has no order |
+| CU7 | One customer with 3 orders | pagination returns correct slices |
+| CU8 | `GET /admin/orders` | each row shows the customer (`null` for guests) |
+
+Checked in a real browser: switching customer swaps the cart and history; a customer's cart survives switching away and back; the chosen customer survives a reload; Aisha and Ben both holding the last print gives Ben an order and Aisha a `INSUFFICIENT_INVENTORY` message with her cart intact; switching customer while a checkout is still running leaves the new customer's screen untouched and the order is still recorded.
+
 ### Backpressure and timeouts (`hardening.test.ts`)
 
 | ID | Case | Expected | Fails if protection removed |

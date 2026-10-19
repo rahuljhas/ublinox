@@ -21,6 +21,7 @@ describe("GET /admin/orders (order history)", () => {
       id: latest.id,
       status: "CONFIRMED",
       cartId,
+      customerId: null,
       createdAt: latest.createdAt,
       itemCount: 3,
       subtotalCents: 3099,

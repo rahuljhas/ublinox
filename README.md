@@ -2,6 +2,7 @@
 
 Backend for a small store: carts, checkout that is safe to retry, inventory that never oversells, and a discount coupon unlocked by every n-th placed order. A small React frontend demonstrates the behaviour.
 
+- Demo customers: the store header has a switcher with three customers (Aisha Khan `u-aisha`, Ben Carter `u-ben`, Chloe Martin `u-chloe`). There is no login: the browser declares the customer id. Each customer has their own cart and order history, which makes it easy to test two shoppers going for the last unit.
 - `backend/`: Node.js + TypeScript + Express. All state is in memory, seeded from `backend/src/data/products.json`. No database.
 - `frontend/`: Vite + React + TypeScript. Shop, cart, checkout with coupon, receipt, and an admin panel.
 - `docs/checkout-sequence.png`: sequence diagram of the checkout flow.
@@ -39,7 +40,7 @@ npm install
 npm run dev
 ```
 
-Run the backend tests (124 automated tests), and the live edge-case run against a started server (37 checks):
+Run the backend tests (140 automated tests), and the live edge-case run against a started server (37 checks):
 
 ```bash
 cd backend
@@ -79,12 +80,13 @@ Every error has the same shape, and `code` is stable for clients to branch on:
 | Method & path | Body | Success | Important errors |
 |---|---|---|---|
 | `GET /products` | – | 200 list of products | – |
-| `POST /carts` | – | 201 cart | – |
+| `POST /carts` | `{ "customerId"?: string }` (lower-case letters, digits, dashes, up to 40) | 201 cart (tagged with the customer) | 400 `VALIDATION_ERROR` |
 | `GET /carts/{cartId}` | – | 200 cart with current prices, line totals, subtotal, stock warnings | 404 `CART_NOT_FOUND` |
 | `PUT /carts/{cartId}/items/{productId}` | `{ "quantity": 1-99 }` | 200 cart (adds the item or sets its quantity) | 400 `VALIDATION_ERROR`, 404 `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT` |
 | `DELETE /carts/{cartId}/items/{productId}` | – | 200 cart | 404 `ITEM_NOT_IN_CART`, 409 `CART_ALREADY_CHECKED_OUT` |
 | `POST /carts/{cartId}/checkout` | `{ "couponCode"?: string, "expectedSubtotalCents"?: int }` + header `Idempotency-Key` (8–100 chars) | 201 order. A retry with the same key returns the same order with header `Idempotent-Replayed: true` | 400 `IDEMPOTENCY_KEY_REQUIRED`, 402 `PAYMENT_DECLINED`, 404 `COUPON_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY`, 409 `CART_ALREADY_CHECKED_OUT`, 409 `COUPON_ALREADY_REDEEMED`, 409 `PRICE_CHANGED`, 409 `REQUEST_IN_PROGRESS`, 422 `CART_EMPTY`, 422 `IDEMPOTENCY_KEY_REUSED`, 503 `SERVER_BUSY`, 504 `PAYMENT_TIMEOUT` |
 | `GET /orders/{orderId}` | – | 200 order with line snapshot (name, unit price, quantity), subtotal, discount, total, coupon | 404 `ORDER_NOT_FOUND` |
+| `GET /orders?customerId=&limit=&offset=` | – | 200 `{ orders, total, limit, offset }`: that customer's orders with line items, newest first | 400 `VALIDATION_ERROR` (customerId required) |
 | `GET /coupons/{code}` | – | 200 `{ code, percentOff, status }` | 404 `COUPON_NOT_FOUND` |
 
 ### Admin endpoints (no auth; administrative by the `/admin` prefix)

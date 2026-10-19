@@ -7,7 +7,7 @@ Code references are relative to `backend/src/`. Test IDs refer to `docs/TEST_PLA
 
 1. [System invariants](#1-system-invariants)
 2. [Ambiguities and chosen semantics](#2-ambiguities-and-chosen-semantics)
-3. [Material design decisions](#3-material-design-decisions) (13 decisions in 10 groups: Locks, Checkout flow, Idempotency, Backpressure and timeouts, Inventory and pricing, Money, Coupons, Persistence, Payment, API)
+3. [Material design decisions](#3-material-design-decisions) (14 decisions in 10 groups: Locks, Checkout flow, Idempotency, Backpressure and timeouts, Inventory and pricing, Money, Coupons, Persistence, Payment, API)
 4. [Transaction, concurrency and idempotency strategy](#4-transaction-concurrency-and-idempotency-strategy)
 5. [Money and rounding rules](#5-money-and-rounding-rules)
 6. [Error model](#6-error-model)
@@ -47,6 +47,7 @@ Code references are relative to `backend/src/`. Test IDs refer to `docs/TEST_PLA
 | Retry after a failed checkout | The key is released, so the same key is evaluated again (useful after fixing the cart). |
 | Payment | A fake asynchronous gateway; see the Payment decision. |
 | Admin authentication | Not implemented. Admin operations are those under `/admin/*`. |
+| Who is a "customer" | A demo identity: the client declares a `customerId` when it creates a cart (three in the UI: `u-aisha`, `u-ben`, `u-chloe`). Orders copy it from the cart. There is no login, so this separates carts and history for testing but is not access control. |
 
 ## 3. Material design decisions
 
@@ -235,6 +236,21 @@ The browser retries `SERVER_BUSY` and `REQUEST_IN_PROGRESS` up to twice with the
 
 ### API
 
+#### Decision: Demo customers are a client-declared id, with their own cart and history
+
+**Context:** Testing "many customers, one product" and showing per-customer order history needs more than one shopper, but the brief says authentication need not be implemented.
+
+**Options considered:**
+1. One anonymous shopper per browser; history from ids saved in `localStorage`.
+2. Real accounts with login.
+3. A declared `customerId` on the cart, copied to the order, with three demo customers selectable in the UI.
+
+**Choice:** Option 3. `POST /carts` takes an optional `customerId` (lower-case letters, digits, dashes, up to 40). The order copies it from the cart. `GET /orders?customerId=` returns that customer's orders with their lines, newest first; the id is required so the endpoint is not a way to list every order. The admin order list shows the customer. The UI keeps one open cart per customer and ignores a slow response that finishes after the user has switched.
+
+**Why:** Option 1 ties history to one browser and cannot show two shoppers competing. Option 2 is a large feature the brief does not ask for. Option 3 is a few lines in the service, keeps history on the server, and makes the main scenarios (two shoppers, one last unit; per-customer history) easy to test by hand and by script.
+
+**Consequences:** Nothing proves who a customer is, so anyone can read another customer's history by guessing the id. That is acceptable for a demo and is listed first in the production steps (Section 10). Carts and orders created without a customer (the load tests, API clients) have `customerId: null` and still work. Tests: CU1–CU8.
+
 #### Decision: PUT sets the item quantity (no "add 1" endpoint)
 
 **Context:** Customers double-click "Add", and clients retry requests.
@@ -282,7 +298,7 @@ How the decisions above combine on `POST /carts/{id}/checkout`:
 | Coupon generation | No `await`, so it cannot interleave (M5) |
 | Report and order history | Read-only; computed from committed orders only (R4, H4) |
 
-**Verification:** 124 automated tests run against a real HTTP server per test. With locks disabled, the race tests fail (X3, X4, X11, X13, X14, K16–K18, K21, S1, L1, L2). With lock sorting removed, X5 deadlocks. Removing each timeout or the key sweep fails T1, T2, T3b, T4 or T6. `npm run edge-cases` runs 37 checks and `npm run load` a concurrent-shoppers scenario against a live server.
+**Verification:** 140 automated tests run against a real HTTP server per test. With locks disabled, the race tests fail (X3, X4, X11, X13, X14, K16–K18, K21, S1, L1, L2). With lock sorting removed, X5 deadlocks. Removing each timeout or the key sweep fails T1, T2, T3b, T4 or T6. `npm run edge-cases` runs 37 checks and `npm run load` a concurrent-shoppers scenario against a live server.
 
 **Measured behaviour** (`npm run load`, laptop, 150 ms simulated payment; stock conservation, order counts, revenue, coupon counts and status codes all checked):
 
@@ -329,7 +345,7 @@ Checkout returns the first failing check, in a fixed order, and writes nothing. 
 | Catalog | 6 seeded products; admin price and stock edits | Create / deactivate products (not in the brief) |
 | Cart | Create, view with live prices and stock warnings, set quantity, remove | Cart expiry |
 | Checkout | Idempotent, locked, validate → pay → commit, price-change guard, bounded lock wait (503), payment timeout (504) | Reserve-then-pay to lift the per-product throughput limit (Section 10) |
-| Orders | Snapshot lines, `CONFIRMED` status, `GET /orders/{id}`, paginated `GET /admin/orders` | Shipping, cancellation, refunds, per-customer history (no accounts) |
+| Orders | Snapshot lines, `CONFIRMED` status, `GET /orders/{id}`, paginated `GET /admin/orders`, per-customer history for declared demo customers | Shipping, cancellation, refunds |
 | Coupons | Milestones, admin generation, single use, atomic redemption | Expiry, minimum spend, per-customer limits |
 | Pricing | Subtotal, discount, total in cents | Taxes, shipping |
 | Payment | Async fake with declines and a charge log | Real provider, timeouts, webhooks, reconciliation |
@@ -382,7 +398,7 @@ I used Claude (Claude Code) as a pair programmer for scaffolding, tests, diagram
 | 2 | Public `GET /rewards/progress`; stop the customer page reading `/admin/report` | Keeps the customer / admin boundary clean |
 | 3 | Persist to SQLite behind the same service interface | Survives restarts; a step toward Section 8 |
 | 4 | Reconcile `PAYMENT_TIMEOUT` outcomes (outbox plus a status check at the provider) | After a 504 the real charge state is unknown with a real provider |
-| 5 | Authentication, and per-customer coupon and order history | Admin routes are public; coupons are store-wide |
+| 5 | Authentication (customer ids are declared by the client, so anyone can read anyone's history), and per-customer coupon rules | Admin routes are public; coupons are store-wide |
 
 ---
 

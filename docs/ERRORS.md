@@ -70,12 +70,13 @@ Every error has the same shape. Clients branch on `code`, which is stable. `mess
 | Endpoint | Possible errors |
 |---|---|
 | `GET /products` | – |
-| `POST /carts` | – |
+| `POST /carts` | 400 `VALIDATION_ERROR` (bad `customerId` or unknown field) |
 | `GET /carts/{id}` | 404 `CART_NOT_FOUND` |
 | `PUT /carts/{id}/items/{pid}` | 400 `VALIDATION_ERROR` / `INVALID_JSON`, 404 `CART_NOT_FOUND` / `PRODUCT_NOT_FOUND`, 409 `INSUFFICIENT_INVENTORY` / `CART_ALREADY_CHECKED_OUT`, 413, 503 `SERVER_BUSY` |
 | `DELETE /carts/{id}/items/{pid}` | 404 `CART_NOT_FOUND` / `ITEM_NOT_IN_CART`, 409 `CART_ALREADY_CHECKED_OUT`, 503 `SERVER_BUSY` |
 | `POST /carts/{id}/checkout` | 400 `IDEMPOTENCY_KEY_REQUIRED` / `VALIDATION_ERROR` / `INVALID_JSON`, 402 `PAYMENT_DECLINED`, 404 `CART_NOT_FOUND` / `COUPON_NOT_FOUND`, 409 `CART_ALREADY_CHECKED_OUT` / `INSUFFICIENT_INVENTORY` / `COUPON_ALREADY_REDEEMED` / `PRICE_CHANGED` / `REQUEST_IN_PROGRESS`, 422 `CART_EMPTY` / `IDEMPOTENCY_KEY_REUSED`, 503 `SERVER_BUSY`, 504 `PAYMENT_TIMEOUT` |
 | `GET /orders/{id}` | 404 `ORDER_NOT_FOUND` |
+| `GET /orders?customerId=` | 400 `VALIDATION_ERROR` (missing or malformed `customerId`, bad `limit` / `offset`, unknown parameter) |
 | `GET /coupons/{code}` | 404 `COUPON_NOT_FOUND` |
 | `POST /admin/coupons` | 409 `NO_ELIGIBLE_MILESTONE` |
 | `GET /admin/coupons` | – |

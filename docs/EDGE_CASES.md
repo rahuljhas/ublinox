@@ -159,7 +159,8 @@ The error says per product how many were requested and how many are available, s
 |---|---|---|
 | Admin | `GET /admin/orders?limit=20&offset=0` | `{ orders, total, limit, offset }`, newest first. Each order: `id`, `status`, `cartId`, `createdAt`, `itemCount`, `subtotalCents`, `discountCents`, `totalCents`, `couponCode` |
 | Customer | `GET /orders/{id}` | One full order with line snapshots |
-| Customer UI | "Your orders" section | Orders placed from this browser (ids kept in `localStorage`, since there is no login) |
+| Customer | `GET /orders?customerId=u-ben` | That customer's orders with line items, newest first (`customerId` is required) |
+| Customer UI | "Orders for <name>" section | The selected demo customer's orders from the server. Switching customer (Aisha, Ben, Chloe) swaps the cart and the history |
 
 | Rule | Detail | Test |
 |---|---|---|

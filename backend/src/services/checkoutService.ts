@@ -119,6 +119,7 @@ export async function checkout(
       id: randomUUID(),
       status: "CONFIRMED",
       cartId: cart.id,
+      customerId: cart.customerId,
       lines,
       subtotalCents,
       discountCents,

@@ -7,6 +7,7 @@ export interface CartView {
   id: string;
   status: Cart["status"];
   orderId: string | null;
+  customerId: string | null;
   items: {
     productId: string;
     name: string;
@@ -28,8 +29,8 @@ export function getCart(ctx: Context, cartId: string): Cart {
   return cart;
 }
 
-export function createCart(ctx: Context): CartView {
-  const cart: Cart = { id: randomUUID(), status: "OPEN", items: new Map(), orderId: null, createdAt: new Date().toISOString() };
+export function createCart(ctx: Context, customerId: string | null = null): CartView {
+  const cart: Cart = { id: randomUUID(), status: "OPEN", items: new Map(), orderId: null, customerId, createdAt: new Date().toISOString() };
   ctx.store.carts.set(cart.id, cart);
   return viewCart(ctx, cart.id);
 }
@@ -53,6 +54,7 @@ export function viewCart(ctx: Context, cartId: string): CartView {
     id: cart.id,
     status: cart.status,
     orderId: cart.orderId,
+    customerId: cart.customerId,
     items,
     itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
     subtotalCents: items.reduce((sum, item) => sum + item.lineTotalCents, 0),

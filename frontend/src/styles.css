@@ -210,3 +210,26 @@ td input { width: 90px; text-align: right; padding: 5px 8px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- user switcher ---------- */
+.user-switcher { position: relative; }
+.user-button { display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--white); font: inherit; color: var(--ink); cursor: pointer; }
+.user-button:hover { background: var(--mist); }
+.user-button:focus-visible, .user-item:focus-visible { outline: 3px solid var(--brand-300); outline-offset: 2px; }
+.avatar { display: inline-grid; place-items: center; border-radius: 50%; color: var(--white); font-weight: 800; letter-spacing: 0.02em; flex: none; }
+.user-text { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+.user-text small { font-size: 0.68rem; color: var(--muted); }
+.user-text strong { font-size: 0.86rem; font-weight: 700; white-space: nowrap; }
+.chev { color: var(--muted); font-size: 0.75rem; }
+.user-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 280px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 24px 48px -20px rgba(11, 11, 13, 0.35); padding: 8px; display: grid; gap: 2px; }
+.user-menu-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 4px; }
+.user-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: none; font: inherit; color: var(--ink); cursor: pointer; text-align: left; }
+.user-item:hover { background: var(--mist); }
+.user-item.active { background: var(--brand-50); }
+.user-item .user-text { flex: 1; }
+.user-item .user-text small { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.user-item .check { color: var(--brand-500); font-weight: 800; }
+.user-menu-note { font-size: 0.72rem; color: var(--muted); padding: 8px 10px 4px; border-top: 1px solid var(--line); margin-top: 4px; line-height: 1.4; }
+.empty-history { padding: 18px 0; margin: 0; }
+.table-scroll { overflow-x: auto; }
+@media (max-width: 760px) { .user-text small, .user-button .chev { display: none; } .user-button { padding-right: 6px; } .user-button .user-text strong { display: none; } }

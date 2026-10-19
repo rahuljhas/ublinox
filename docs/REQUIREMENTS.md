@@ -27,7 +27,7 @@ Every requirement in `task.md`, where it is enforced, and the test that proves i
 | 19 | API documented; admin operations identified | ✅ | `README.md`, `/admin/*` | – |
 | 20 | In-memory store still safe under overlap | ✅ | `keyedMutex.ts` | 5 tests fail with locks off |
 | 21 | Multi-instance / production DB explained | ✅ | `DECISIONS.md` §8 | – |
-| 22 | Tests include competing or repeated operations | ✅ | 124 tests + 37 live checks + load test | `npm test`, `npm run edge-cases` |
+| 22 | Tests include competing or repeated operations | ✅ | 140 tests + 37 live checks + load test | `npm test`, `npm run edge-cases` |
 | 23 | **DECISIONS.md** (heavily weighted) | ✅ | `DECISIONS.md`: 10 sections, 12 decisions | – |
 | 24 | Meaningful commit history | ✅ | 25+ commits | – |
 | 25 | Approximate time spent stated | ❌ | – | – |
