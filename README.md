@@ -2,7 +2,7 @@
 
 <img src="frontend/public/logo.png" alt="Ublinox logo" width="72" />
 
-# Ublinox Checkout & Rewards Service
+# Ublinox Take Home Assignment
 
 **A small store backend that stays correct when requests are retried, repeated or arrive at the same moment.**
 
