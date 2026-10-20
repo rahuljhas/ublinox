@@ -28,7 +28,7 @@ Related documents: [README](README.md) · [Error catalogue](docs/ERRORS.md) · [
 ### System overview
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73', 'clusterBkg': '#fafafa', 'clusterBorder': '#dcdce0'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 flowchart LR
   subgraph client["Browser (Vercel)"]
     UI["React store<br/>customer switcher · cart · admin"]
@@ -138,7 +138,7 @@ In the report, gross revenue is the sum of subtotals, discounts is the sum of di
 - The coupon goes from `AVAILABLE` to `REDEEMED` in the same block that saves the order. If the checkout fails for any reason, the coupon stays available.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 flowchart LR
   O["An order commits<br/>(counts toward the milestone)"] --> M{"floor(orders / n)<br/>greater than coupons generated?"}
   M -- "no" --> W["Nothing is owed"]
@@ -165,7 +165,7 @@ With `n = 5`: after 4 orders nothing is owed; after 5 one coupon is owed; once i
 A checked-out cart cannot be edited. Shipping, cancellation, and refunds are outside the scope of this demo.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 stateDiagram-v2
   direction LR
   state "Cart" as cart {
@@ -425,7 +425,7 @@ This is how the decisions above fit together on `POST /carts/{id}/checkout`:
 Which operations take which lock is in [Section 5](#5-locks). What a client does after each outcome is in [Section 7](#7-retries-and-idempotency).
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 flowchart TD
   A(["POST /carts/:id/checkout"]) --> B{"Header and body valid?"}
   B -- "no" --> E1["400 VALIDATION_ERROR<br/>IDEMPOTENCY_KEY_REQUIRED"]
@@ -471,7 +471,7 @@ Node is single-threaded, but the payment `await` is a moment when other requests
 Without the lock, B would also have seen stock 1 and the stock would end at -1.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 sequenceDiagram
   autonumber
   participant A as Shopper A
@@ -568,7 +568,7 @@ The UI also ignores clicks while a checkout is running, so a double-click sends 
 It starts as nothing. When a checkout arrives the key is claimed as "in progress" (before the first `await`, together with a fingerprint of the cart and coupon). If the commit succeeds the 201 is stored under the key as "completed", and it is swept after 24 hours. If anything fails before the commit, the key is deleted.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73', 'clusterBkg': '#fafafa', 'clusterBorder': '#dcdce0'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 stateDiagram-v2
   direction LR
   [*] --> IN_PROGRESS: checkout arrives, key claimed
@@ -581,7 +581,7 @@ stateDiagram-v2
 ### What a client should do after each outcome
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73', 'clusterBkg': '#fafafa', 'clusterBorder': '#dcdce0'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 flowchart LR
   subgraph outcome["Outcome of a checkout request"]
     O1["201 Created"]
@@ -718,11 +718,11 @@ Detailed scenarios are kept in [`docs/EDGE_CASES.md`](docs/EDGE_CASES.md).
 **Result.** The browser keeps each customer's cart and history separate, restores the selected customer after reload, and does not let a slow checkout overwrite the screen after switching customers. Only one shopper can buy the last unit. This is a demo feature, not authentication.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 sequenceDiagram
   autonumber
-  actor Aisha
-  actor Ben
+  participant Aisha
+  participant Ben
   participant UI as Store UI (one browser)
   participant API
   Aisha->>UI: add the last print (cart for u-aisha)
@@ -789,7 +789,7 @@ State and locks only work inside one process. With several instances the plan is
 | Report computed on every read | a summary table or a read replica as volume grows |
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'lineColor': '#6b6b73'}}}%%
+%%{init: {'themeVariables': {'primaryColor': '#eef2ff', 'primaryBorderColor': '#5a5fe5', 'primaryTextColor': '#18181b', 'clusterBkg': 'transparent', 'clusterBorder': '#8c8ca1', 'actorBkg': '#eef2ff', 'actorBorder': '#5a5fe5', 'actorTextColor': '#18181b', 'noteBkgColor': '#fff7ed', 'noteBorderColor': '#c2410c', 'noteTextColor': '#18181b'}}}%%
 flowchart LR
   C["Clients"] --> LB["Load balancer"]
   LB --> API["Stateless API instances<br/>(1 to N)"]
